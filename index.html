@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>公司库存管理</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">库</div>
+          <div>
+            <h1>库存管理</h1>
+            <p>仓库 / 货架 / 出入库</p>
+          </div>
+        </div>
+
+        <nav class="nav-tabs" aria-label="主导航">
+          <button class="nav-tab active" data-view="map">仓库图示</button>
+          <button class="nav-tab" data-view="inventory">库存表格</button>
+          <button class="nav-tab" data-view="movement">出入库</button>
+          <button class="nav-tab" data-view="analytics">图表分析</button>
+          <button class="nav-tab" data-view="permissions">人员权限</button>
+        </nav>
+
+        <section class="side-panel">
+          <label for="activeUser">当前操作人</label>
+          <select id="activeUser"></select>
+          <p id="permissionHint"></p>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Internal Warehouse System</p>
+            <h2 id="viewTitle">仓库图示</h2>
+          </div>
+          <div class="top-actions">
+            <button id="resetDemo" class="ghost-button" type="button">恢复示例</button>
+            <button id="exportJson" class="primary-button" type="button">导出数据</button>
+          </div>
+        </header>
+
+        <section class="summary-grid" aria-label="库存概览">
+          <article>
+            <span>总库存</span>
+            <strong id="statStock">0</strong>
+          </article>
+          <article>
+            <span>货架数量</span>
+            <strong id="statShelves">0</strong>
+          </article>
+          <article>
+            <span>今日出库</span>
+            <strong id="statOutToday">0</strong>
+          </article>
+          <article>
+            <span>低库存</span>
+            <strong id="statLowStock">0</strong>
+          </article>
+        </section>
+
+        <section id="view-map" class="view active">
+          <div class="toolbar">
+            <div class="control-group">
+              <label for="roomSelect">房间</label>
+              <select id="roomSelect"></select>
+            </div>
+            <div class="control-group">
+              <label for="mapProductFilter">产品</label>
+              <input id="mapProductFilter" type="search" placeholder="车型 / 型号 / 货架号" />
+            </div>
+            <button id="toggleEditMap" class="ghost-button" type="button">编辑布局</button>
+            <button id="addShelf" class="ghost-button" type="button">新增货架</button>
+          </div>
+
+          <div class="map-layout">
+            <div class="warehouse-map" id="warehouseMap" aria-label="仓库货架图"></div>
+            <aside class="inspector">
+              <h3 id="inspectorTitle">选择一个货架</h3>
+              <div id="inspectorBody" class="inspector-body"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="view-inventory" class="view">
+          <div class="toolbar">
+            <div class="control-group">
+              <label for="inventorySearch">搜索</label>
+              <input id="inventorySearch" type="search" placeholder="车型 / 型号 / 备注" />
+            </div>
+            <div class="control-group">
+              <label for="inventoryRoom">房间</label>
+              <select id="inventoryRoom"></select>
+            </div>
+            <div class="control-group">
+              <label for="inventoryShelf">货架</label>
+              <select id="inventoryShelf"></select>
+            </div>
+            <button id="addProduct" class="primary-button" type="button">新增产品</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>车型</th>
+                  <th>型号</th>
+                  <th>图片</th>
+                  <th>安卓版本</th>
+                  <th>储存配置</th>
+                  <th>货架号</th>
+                  <th>备注</th>
+                  <th>入库</th>
+                  <th>出库</th>
+                  <th>在库</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="view-movement" class="view">
+          <div class="movement-grid">
+            <form id="movementForm" class="form-panel">
+              <h3>登记出入库</h3>
+              <div class="field-row">
+                <label for="movementType">类型</label>
+                <select id="movementType" required>
+                  <option value="in">入库</option>
+                  <option value="out">出库</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label for="movementProduct">产品</label>
+                <select id="movementProduct" required></select>
+              </div>
+              <div class="field-row">
+                <label for="movementQty">数量</label>
+                <input id="movementQty" type="number" min="1" value="1" required />
+              </div>
+              <div class="field-row">
+                <label for="movementTime">时间</label>
+                <input id="movementTime" type="datetime-local" required />
+              </div>
+              <div class="field-row">
+                <label for="movementNote">备注</label>
+                <textarea id="movementNote" rows="3" placeholder="客户、订单、直播间、调拨原因等"></textarea>
+              </div>
+              <button class="primary-button" type="submit">保存记录</button>
+            </form>
+
+            <div class="records-panel">
+              <div class="panel-head">
+                <h3>最近记录</h3>
+                <input id="recordSearch" type="search" placeholder="搜索记录" />
+              </div>
+              <div id="recordList" class="record-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-analytics" class="view">
+          <div class="toolbar">
+            <div class="control-group">
+              <label for="analyticsDays">周期</label>
+              <select id="analyticsDays">
+                <option value="7">最近 7 天</option>
+                <option value="30" selected>最近 30 天</option>
+                <option value="90">最近 90 天</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="analyticsRoom">房间</label>
+              <select id="analyticsRoom"></select>
+            </div>
+          </div>
+
+          <div class="charts-grid">
+            <section class="chart-panel">
+              <h3>出库销量排行</h3>
+              <div id="salesBars" class="bar-chart"></div>
+            </section>
+            <section class="chart-panel">
+              <h3>库存房间占比</h3>
+              <div class="donut-wrap">
+                <div id="stockDonut" class="donut-chart"></div>
+                <div id="donutLegend" class="legend"></div>
+              </div>
+            </section>
+            <section class="chart-panel wide">
+              <h3>每日出入库趋势</h3>
+              <div id="dailyTrend" class="trend-chart"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="view-permissions" class="view">
+          <div class="permissions-layout">
+            <form id="userForm" class="form-panel">
+              <h3>新增人员</h3>
+              <div class="field-row">
+                <label for="userName">姓名</label>
+                <input id="userName" required placeholder="例如 Wendy" />
+              </div>
+              <div class="field-row">
+                <label for="userRole">角色</label>
+                <select id="userRole">
+                  <option value="admin">管理员</option>
+                  <option value="editor">仓库编辑</option>
+                  <option value="viewer">只读查看</option>
+                </select>
+              </div>
+              <button class="primary-button" type="submit">添加人员</button>
+            </form>
+
+            <div class="user-list-panel">
+              <h3>货架编辑权限</h3>
+              <div id="userPermissionList" class="user-permission-list"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="productDialog" class="modal">
+      <form method="dialog" id="productForm">
+        <h3 id="productDialogTitle">新增产品</h3>
+        <input type="hidden" id="productId" />
+        <div class="modal-grid">
+          <label>车型<input id="productVehicle" required /></label>
+          <label>型号<input id="productModel" required /></label>
+          <label>图片地址<input id="productImage" placeholder="可留空" /></label>
+          <label>安卓版本<input id="productAndroid" placeholder="Linux / 安卓12" /></label>
+          <label>储存配置<input id="productStorage" placeholder="4+64 / 8+128" /></label>
+          <label>货架<select id="productShelf" required></select></label>
+          <label>库存<input id="productStock" type="number" min="0" value="0" required /></label>
+          <label class="full">备注<textarea id="productNote" rows="3"></textarea></label>
+        </div>
+        <div class="modal-actions">
+          <button class="ghost-button" value="cancel" type="button" id="cancelProduct">取消</button>
+          <button class="primary-button" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
