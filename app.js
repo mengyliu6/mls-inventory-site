@@ -58,6 +58,8 @@ let selectedRackId = state.shelves.find((rack) => rack.roomId === activeRoomId)?
 let openedRackId = null;
 let editMap = false;
 let dragState = null;
+let lastSlotPulse = null;
+let pulseTimer = null;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -225,7 +227,7 @@ function fillSlotSelect(select, selected, includeAll) {
     : state.shelves;
   const options = racks.flatMap((rack) => rackSlots(rack).map((slot) => ({ rack, slot })));
   const all = includeAll ? `<option value="all">全部货位</option>` : "";
-  select.innerHTML = all + options.map(({ rack, slot }) => `<option value="${slot.id}">${slot.label} · ${rack.name} · 第${slot.level}层${slot.side}</option>`).join("");
+  select.innerHTML = all + options.map(({ slot }) => `<option value="${slot.id}">${slot.label} · 第${slot.level}层${slot.side}</option>`).join("");
   select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : select.options[0]?.value;
 }
 
@@ -257,9 +259,18 @@ function renderMap() {
     node.style.top = `${rack.y}%`;
     node.style.width = `${rack.w}%`;
     node.style.height = `${rack.h}%`;
+    const previewProducts = products.slice(0, 4);
+    const moreCount = Math.max(0, products.length - previewProducts.length);
     node.innerHTML = `
       <div class="shelf-head"><span>${rack.code}</span><span>${occupied}/8 货位</span></div>
-      <div class="shelf-body">${rack.name}<br>库存 <strong class="${stock <= 0 ? "heat-empty" : stock <= 5 ? "heat-low" : "heat-good"}">${stock}</strong></div>
+      <div class="shelf-body">
+        ${previewProducts.length ? `
+          <div class="rack-product-preview">
+            ${previewProducts.map((product) => `<span title="${product.vehicle}">${product.vehicle}<strong>${product.stock}</strong></span>`).join("")}
+            ${moreCount ? `<em>还有 ${moreCount} 款</em>` : ""}
+          </div>
+        ` : `<span class="empty-rack">暂无产品</span>`}
+      </div>
       <div class="shelf-foot"><span>${canEditRack(rack.id) ? "可编辑" : "只读"}</span><span>${editMap ? "拖拽" : "点开"}</span></div>
     `;
     map.appendChild(node);
@@ -278,7 +289,7 @@ function renderInspector() {
   }
   const products = rackProducts(rack.id);
   const stock = products.reduce((sum, product) => sum + product.stock, 0);
-  title.textContent = `${rack.code} · ${rack.name}`;
+  title.textContent = `${rack.code}`;
   body.innerHTML = `
     <div class="mini-product">
       <strong>大货架结构</strong>
@@ -297,22 +308,25 @@ function renderRackDialog() {
   const rack = state.shelves.find((item) => item.id === openedRackId);
   if (!rack) return;
   const products = rackProducts(rack.id);
-  $("#rackDialogTitle").textContent = `${rack.code} · ${rack.name}`;
+  $("#rackDialogTitle").textContent = rack.code;
   $("#rackDialogMeta").textContent = `上下四层、左右两列，共 8 个货位；当前 ${products.length} 款产品，总库存 ${products.reduce((sum, product) => sum + product.stock, 0)}`;
   $("#rackSlotGrid").innerHTML = rackSlots(rack).map((slot) => {
     const list = slotProducts(slot.id);
     return `
-      <section class="slot-card">
+      <section class="slot-card ${lastSlotPulse?.slotId === slot.id ? `slot-pulse ${lastSlotPulse.type === "in" ? "pulse-in" : "pulse-out"}` : ""}">
         <h4><span>${slot.label}</span><span class="tag">第${slot.level}层${slot.side}</span></h4>
+        ${lastSlotPulse?.slotId === slot.id ? `<div class="slot-pulse-badge">${lastSlotPulse.type === "in" ? "入库" : "出库"} ${lastSlotPulse.type === "in" ? "+" : "-"}${lastSlotPulse.qty}</div>` : ""}
         <div class="slot-products">
           ${list.map((product) => `
-            <article class="slot-product">
+            <article class="slot-product ${lastSlotPulse?.productId === product.id ? "product-flash" : ""}">
               <div>
-                <strong>${product.model}</strong>
-                <small>${product.vehicle} · ${product.android || "未填"} · ${product.storage || "无"} · 库存 ${product.stock}</small>
+                <strong>${product.vehicle}</strong>
+                <small>${product.model} · 库存 <b>${product.stock}</b></small>
               </div>
               <div class="slot-product-actions">
-                <button type="button" data-slot-out="${product.id}" ${canEditProduct(product) && product.stock > 0 ? "" : "disabled"}>出库</button>
+                <input type="number" min="1" value="1" data-slot-qty="${product.id}" aria-label="数量">
+                <button type="button" data-slot-action="in" data-product-id="${product.id}" ${canEditProduct(product) ? "" : "disabled"}>入库</button>
+                <button type="button" data-slot-action="out" data-product-id="${product.id}" ${canEditProduct(product) && product.stock > 0 ? "" : "disabled"}>出库</button>
                 <button type="button" data-edit-product="${product.id}" ${canEditProduct(product) ? "" : "disabled"}>编辑</button>
               </div>
             </article>
@@ -544,7 +558,26 @@ function addMovement({ productId, type, qty, at, note }) {
   if (type === "out" && product.stock < qty) return alert("库存不足，不能出库。");
   product.stock += type === "in" ? qty : -qty;
   state.movements.push({ id: uid("m"), productId, type, qty, at, note, userId: state.activeUserId });
+  lastSlotPulse = { slotId: product.slotId, productId, type, qty };
+  clearTimeout(pulseTimer);
+  pulseTimer = setTimeout(() => {
+    lastSlotPulse = null;
+    renderMap();
+    if ($("#rackDialog").open) renderRackDialog();
+  }, 1400);
   render();
+}
+
+function adjustFromSlot(productId, type) {
+  const input = $(`[data-slot-qty="${productId}"]`);
+  const qty = Math.max(1, Number(input?.value || 1));
+  addMovement({
+    productId,
+    type,
+    qty,
+    at: todayInputValue(),
+    note: "仓库图示直接操作"
+  });
 }
 
 function downloadJson() {
@@ -576,7 +609,13 @@ document.addEventListener("click", (event) => {
     openProductDialog(editProduct.dataset.editProduct);
   }
 
-  const quickOut = event.target.closest("[data-quick-out], [data-slot-out]");
+  const slotAction = event.target.closest("[data-slot-action]");
+  if (slotAction) {
+    adjustFromSlot(slotAction.dataset.productId, slotAction.dataset.slotAction);
+    return;
+  }
+
+  const quickOut = event.target.closest("[data-quick-out]");
   if (quickOut) {
     const productId = quickOut.dataset.quickOut || quickOut.dataset.slotOut;
     const product = state.products.find((item) => item.id === productId);
