@@ -13,16 +13,16 @@
           <div class="brand-mark">库</div>
           <div>
             <h1>库存管理</h1>
-            <p>仓库 / 货架 / 出入库</p>
+            <p>房间 / 大货架 / 货位</p>
           </div>
         </div>
 
         <nav class="nav-tabs" aria-label="主导航">
-          <button class="nav-tab active" data-view="map">仓库图示</button>
+            <button class="nav-tab active" data-view="map">仓库图示</button>
           <button class="nav-tab" data-view="inventory">库存表格</button>
           <button class="nav-tab" data-view="movement">出入库</button>
           <button class="nav-tab" data-view="analytics">图表分析</button>
-          <button class="nav-tab" data-view="permissions">人员权限</button>
+            <button class="nav-tab" data-view="permissions">人员权限</button>
         </nav>
 
         <section class="side-panel">
@@ -50,7 +50,7 @@
             <strong id="statStock">0</strong>
           </article>
           <article>
-            <span>货架数量</span>
+            <span>大货架数量</span>
             <strong id="statShelves">0</strong>
           </article>
           <article>
@@ -71,16 +71,16 @@
             </div>
             <div class="control-group">
               <label for="mapProductFilter">产品</label>
-              <input id="mapProductFilter" type="search" placeholder="车型 / 型号 / 货架号" />
+              <input id="mapProductFilter" type="search" placeholder="车型 / 型号 / 货位号" />
             </div>
             <button id="toggleEditMap" class="ghost-button" type="button">编辑布局</button>
-            <button id="addShelf" class="ghost-button" type="button">新增货架</button>
+            <button id="addShelf" class="ghost-button" type="button">新增大货架</button>
           </div>
 
           <div class="map-layout">
-            <div class="warehouse-map" id="warehouseMap" aria-label="仓库货架图"></div>
+            <div class="warehouse-map" id="warehouseMap" aria-label="仓库大货架图"></div>
             <aside class="inspector">
-              <h3 id="inspectorTitle">选择一个货架</h3>
+              <h3 id="inspectorTitle">选择一个大货架</h3>
               <div id="inspectorBody" class="inspector-body"></div>
             </aside>
           </div>
@@ -97,7 +97,7 @@
               <select id="inventoryRoom"></select>
             </div>
             <div class="control-group">
-              <label for="inventoryShelf">货架</label>
+              <label for="inventoryShelf">货位</label>
               <select id="inventoryShelf"></select>
             </div>
             <button id="addProduct" class="primary-button" type="button">新增产品</button>
@@ -113,7 +113,7 @@
                   <th>图片</th>
                   <th>安卓版本</th>
                   <th>储存配置</th>
-                  <th>货架号</th>
+                  <th>货位号</th>
                   <th>备注</th>
                   <th>入库</th>
                   <th>出库</th>
@@ -221,7 +221,7 @@
             </form>
 
             <div class="user-list-panel">
-              <h3>货架编辑权限</h3>
+          <h3>大货架编辑权限</h3>
               <div id="userPermissionList" class="user-permission-list"></div>
             </div>
           </div>
@@ -239,7 +239,7 @@
           <label>图片地址<input id="productImage" placeholder="可留空" /></label>
           <label>安卓版本<input id="productAndroid" placeholder="Linux / 安卓12" /></label>
           <label>储存配置<input id="productStorage" placeholder="4+64 / 8+128" /></label>
-          <label>货架<select id="productShelf" required></select></label>
+          <label>货位<select id="productShelf" required></select></label>
           <label>库存<input id="productStock" type="number" min="0" value="0" required /></label>
           <label class="full">备注<textarea id="productNote" rows="3"></textarea></label>
         </div>
@@ -247,6 +247,19 @@
           <button class="ghost-button" value="cancel" type="button" id="cancelProduct">取消</button>
           <button class="primary-button" value="default" type="submit">保存</button>
         </div>
+      </form>
+    </dialog>
+
+    <dialog id="rackDialog" class="modal rack-modal">
+      <form method="dialog">
+        <div class="rack-dialog-head">
+          <div>
+            <h3 id="rackDialogTitle">大货架详情</h3>
+            <p id="rackDialogMeta"></p>
+          </div>
+          <button class="ghost-button" value="cancel" type="button" id="closeRackDialog">关闭</button>
+        </div>
+        <div id="rackSlotGrid" class="rack-slot-grid"></div>
       </form>
     </dialog>
 

@@ -1,43 +1,45 @@
-const STORAGE_KEY = "warehouse-inventory-v1";
-
+const STORAGE_KEY = "warehouse-inventory-v2";
+const SLOT_COUNT = 8;
 const colors = ["#2563eb", "#16a34a", "#ea580c", "#0891b2", "#7c3aed", "#dc2626"];
 
 const starterData = {
   users: [
-    { id: "u-admin", name: "管理员", role: "admin", shelfIds: [] },
-    { id: "u-wendy", name: "Wendy", role: "editor", shelfIds: ["s-a2", "s-a4", "s-b8"] },
-    { id: "u-hai", name: "Hai", role: "editor", shelfIds: ["s-b2", "s-b7", "s-c2"] },
-    { id: "u-viewer", name: "仓库查看", role: "viewer", shelfIds: [] }
+    { id: "u-admin", name: "管理员", role: "admin", rackIds: [] },
+    { id: "u-wendy", name: "Wendy", role: "editor", rackIds: ["rack-1-b1", "rack-2-a1"] },
+    { id: "u-hai", name: "Hai", role: "editor", rackIds: ["rack-2-b1", "rack-3-c1"] },
+    { id: "u-viewer", name: "仓库查看", role: "viewer", rackIds: [] }
   ],
   activeUserId: "u-admin",
   rooms: [
-    { id: "r-a", name: "A 区房间", note: "仪表产品与直播间备货" },
-    { id: "r-b", name: "B 区房间", note: "主机与解码盒" },
-    { id: "r-c", name: "C 区房间", note: "屏幕与面板" }
+    { id: "room-1", name: "房间1", note: "主库存区" },
+    { id: "room-2", name: "房间2", note: "仪表与主机区" },
+    { id: "room-3", name: "房间3", note: "屏幕与面板区" },
+    { id: "room-4", name: "房间4", note: "备货与临时周转区" }
   ],
   shelves: [
-    { id: "s-a2", roomId: "r-a", code: "A-2", name: "A2 货架", x: 8, y: 17, w: 22, h: 17 },
-    { id: "s-a4", roomId: "r-a", code: "A-4", name: "A4 货架", x: 35, y: 18, w: 24, h: 18 },
-    { id: "s-a6", roomId: "r-a", code: "A-6", name: "A6 货架", x: 65, y: 18, w: 24, h: 18 },
-    { id: "s-b2", roomId: "r-b", code: "B-2", name: "B2 货架", x: 10, y: 17, w: 23, h: 18 },
-    { id: "s-b7", roomId: "r-b", code: "B-7", name: "B7 货架", x: 39, y: 17, w: 22, h: 18 },
-    { id: "s-b8", roomId: "r-b", code: "B-8", name: "B8 货架", x: 68, y: 16, w: 22, h: 19 },
-    { id: "s-c2", roomId: "r-c", code: "C2-2", name: "C2 货架", x: 14, y: 18, w: 24, h: 18 },
-    { id: "s-c5", roomId: "r-c", code: "C2-5", name: "C5 货架", x: 45, y: 20, w: 22, h: 17 },
-    { id: "s-c6", roomId: "r-c", code: "C2-6", name: "C6 货架", x: 69, y: 46, w: 22, h: 18 }
+    { id: "rack-1-b1", roomId: "room-1", code: "B1", name: "B1 大货架", x: 8, y: 16, w: 25, h: 27 },
+    { id: "rack-1-b2", roomId: "room-1", code: "B2", name: "B2 大货架", x: 39, y: 16, w: 25, h: 27 },
+    { id: "rack-1-b3", roomId: "room-1", code: "B3", name: "B3 大货架", x: 70, y: 16, w: 22, h: 27 },
+    { id: "rack-2-a1", roomId: "room-2", code: "A1", name: "A1 大货架", x: 8, y: 18, w: 26, h: 28 },
+    { id: "rack-2-a2", roomId: "room-2", code: "A2", name: "A2 大货架", x: 40, y: 18, w: 26, h: 28 },
+    { id: "rack-2-b1", roomId: "room-2", code: "B1", name: "B1 大货架", x: 70, y: 18, w: 22, h: 28 },
+    { id: "rack-3-c1", roomId: "room-3", code: "C1", name: "C1 大货架", x: 10, y: 20, w: 26, h: 30 },
+    { id: "rack-3-c2", roomId: "room-3", code: "C2", name: "C2 大货架", x: 44, y: 20, w: 26, h: 30 },
+    { id: "rack-4-d1", roomId: "room-4", code: "D1", name: "D1 大货架", x: 12, y: 18, w: 28, h: 30 },
+    { id: "rack-4-d2", roomId: "room-4", code: "D2", name: "D2 大货架", x: 52, y: 18, w: 28, h: 30 }
   ],
   products: [
-    { id: "p-1", vehicle: "GMC 索罗德仪表 14-18", model: "JT5-1370", image: "", android: "Linux", storage: "无", shelfId: "s-a2", note: "一台在直播间", stock: 8 },
-    { id: "p-2", vehicle: "凯迪拉克凯雷德 07-14", model: "JT5-1508", image: "", android: "Linux", storage: "无", shelfId: "s-a2", note: "一台在直播间", stock: 13 },
-    { id: "p-3", vehicle: "福特 F150 仪表 15-21", model: "JT5-1397", image: "", android: "Linux", storage: "无", shelfId: "s-a6", note: "直播样机", stock: 10 },
-    { id: "p-4", vehicle: "BMW E65/E66", model: "JT5-1303", image: "", android: "Linux", storage: "无", shelfId: "s-a4", note: "", stock: 3 },
-    { id: "p-5", vehicle: "4Runner 2010-2022", model: "WE-8103", image: "", android: "安卓12", storage: "6+128", shelfId: "s-b8", note: "亮黑", stock: 5 },
-    { id: "p-6", vehicle: "Tacoma 2016-2022", model: "WE-8106A", image: "", android: "安卓12", storage: "4+64", shelfId: "s-b7", note: "枪色+电镀银", stock: 1 },
-    { id: "p-7", vehicle: "Grand Cherokee 2014-2022", model: "WE-8504", image: "", android: "安卓14", storage: "8+128", shelfId: "s-b8", note: "", stock: 30 },
-    { id: "p-8", vehicle: "14-20 GX", model: "16GXSI", image: "", android: "Linux", storage: "", shelfId: "s-b2", note: "", stock: 100 },
-    { id: "p-9", vehicle: "玛莎拉蒂 GT 2007-2020", model: "10.4 1024*768", image: "", android: "安卓13", storage: "6+128", shelfId: "s-c2", note: "黑色", stock: 2 },
-    { id: "p-10", vehicle: "保时捷卡宴 PCM3.0/3.1", model: "12.3 1920*720", image: "", android: "安卓12", storage: "8+128", shelfId: "s-c6", note: "", stock: 6 },
-    { id: "p-11", vehicle: "GX460 10-16", model: "10.25 1920*720", image: "", android: "安卓12", storage: "4+64", shelfId: "s-c2", note: "", stock: 1 }
+    { id: "p-1", vehicle: "GMC 索罗德仪表 14-18", model: "JT5-1370", image: "", android: "Linux", storage: "无", slotId: "rack-2-a1:2", note: "一台在直播间", stock: 8 },
+    { id: "p-2", vehicle: "凯迪拉克凯雷德 07-14", model: "JT5-1508", image: "", android: "Linux", storage: "无", slotId: "rack-2-a1:4", note: "一台在直播间", stock: 13 },
+    { id: "p-3", vehicle: "福特 F150 仪表 15-21", model: "JT5-1397", image: "", android: "Linux", storage: "无", slotId: "rack-2-a2:6", note: "直播样机", stock: 10 },
+    { id: "p-4", vehicle: "BMW E65/E66", model: "JT5-1303", image: "", android: "Linux", storage: "无", slotId: "rack-2-b1:3", note: "", stock: 3 },
+    { id: "p-5", vehicle: "4Runner 2010-2022", model: "WE-8103", image: "", android: "安卓12", storage: "6+128", slotId: "rack-1-b1:8", note: "亮黑", stock: 5 },
+    { id: "p-6", vehicle: "Tacoma 2016-2022", model: "WE-8106A", image: "", android: "安卓12", storage: "4+64", slotId: "rack-1-b1:7", note: "枪色+电镀银", stock: 1 },
+    { id: "p-7", vehicle: "Grand Cherokee 2014-2022", model: "WE-8504", image: "", android: "安卓14", storage: "8+128", slotId: "rack-1-b2:8", note: "", stock: 30 },
+    { id: "p-8", vehicle: "14-20 GX", model: "16GXSI", image: "", android: "Linux", storage: "", slotId: "rack-1-b1:1", note: "", stock: 100 },
+    { id: "p-9", vehicle: "玛莎拉蒂 GT 2007-2020", model: "10.4 1024*768", image: "", android: "安卓13", storage: "6+128", slotId: "rack-3-c1:2", note: "黑色", stock: 2 },
+    { id: "p-10", vehicle: "保时捷卡宴 PCM3.0/3.1", model: "12.3 1920*720", image: "", android: "安卓12", storage: "8+128", slotId: "rack-3-c2:6", note: "", stock: 6 },
+    { id: "p-11", vehicle: "GX460 10-16", model: "10.25 1920*720", image: "", android: "安卓12", storage: "4+64", slotId: "rack-3-c1:2", note: "", stock: 1 }
   ],
   movements: [
     { id: "m-1", productId: "p-8", type: "in", qty: 67, at: "2026-05-14T10:00", userId: "u-admin", note: "0514 入库" },
@@ -52,7 +54,8 @@ const starterData = {
 let state = loadState();
 let activeView = "map";
 let activeRoomId = state.rooms[0]?.id;
-let selectedShelfId = state.shelves.find((shelf) => shelf.roomId === activeRoomId)?.id;
+let selectedRackId = state.shelves.find((rack) => rack.roomId === activeRoomId)?.id;
+let openedRackId = null;
 let editMap = false;
 let dragState = null;
 
@@ -64,10 +67,22 @@ function loadState() {
   if (!saved) return structuredClone(starterData);
   try {
     const parsed = JSON.parse(saved);
-    return parsed.rooms && parsed.shelves && parsed.products ? parsed : structuredClone(starterData);
+    return parsed.rooms && parsed.shelves && parsed.products ? normalizeState(parsed) : structuredClone(starterData);
   } catch {
     return structuredClone(starterData);
   }
+}
+
+function normalizeState(data) {
+  data.users = data.users.map((user) => ({
+    ...user,
+    rackIds: user.rackIds || user.shelfIds || []
+  }));
+  data.products = data.products.map((product) => ({
+    ...product,
+    slotId: product.slotId || `${product.shelfId || data.shelves[0]?.id}:1`
+  }));
+  return data;
 }
 
 function saveState() {
@@ -82,12 +97,37 @@ function activeUser() {
   return state.users.find((user) => user.id === state.activeUserId) || state.users[0];
 }
 
-function productShelf(product) {
-  return state.shelves.find((shelf) => shelf.id === product.shelfId);
+function rackSlots(rack) {
+  return Array.from({ length: SLOT_COUNT }, (_, index) => {
+    const number = index + 1;
+    const level = Math.floor(index / 2) + 1;
+    const side = index % 2 === 0 ? "左" : "右";
+    return {
+      id: `${rack.id}:${number}`,
+      label: `${rack.code}-${number}`,
+      level,
+      side
+    };
+  });
 }
 
-function shelfProducts(shelfId) {
-  return state.products.filter((product) => product.shelfId === shelfId);
+function productRack(product) {
+  const rackId = product.slotId?.split(":")[0];
+  return state.shelves.find((rack) => rack.id === rackId);
+}
+
+function productSlot(product) {
+  const rack = productRack(product);
+  if (!rack) return null;
+  return rackSlots(rack).find((slot) => slot.id === product.slotId);
+}
+
+function rackProducts(rackId) {
+  return state.products.filter((product) => product.slotId?.startsWith(`${rackId}:`));
+}
+
+function slotProducts(slotId) {
+  return state.products.filter((product) => product.slotId === slotId);
 }
 
 function productMovements(productId) {
@@ -100,9 +140,13 @@ function movementTotal(productId, type) {
     .reduce((sum, movement) => sum + movement.qty, 0);
 }
 
-function canEditShelf(shelfId) {
+function canEditRack(rackId) {
   const user = activeUser();
-  return user.role === "admin" || (user.role === "editor" && user.shelfIds.includes(shelfId));
+  return user.role === "admin" || (user.role === "editor" && user.rackIds.includes(rackId));
+}
+
+function canEditProduct(product) {
+  return canEditRack(productRack(product)?.id);
 }
 
 function formatDateTime(value) {
@@ -129,11 +173,11 @@ function render() {
   renderAnalytics();
   renderPermissions();
   $("#permissionHint").textContent = permissionText();
+  if ($("#rackDialog").open) renderRackDialog();
 }
 
 function renderUsers() {
-  const select = $("#activeUser");
-  select.innerHTML = state.users
+  $("#activeUser").innerHTML = state.users
     .map((user) => `<option value="${user.id}" ${user.id === state.activeUserId ? "selected" : ""}>${user.name} · ${roleName(user.role)}</option>`)
     .join("");
 }
@@ -144,10 +188,10 @@ function roleName(role) {
 
 function permissionText() {
   const user = activeUser();
-  if (user.role === "admin") return "管理员可以编辑全部房间、货架、产品与记录。";
+  if (user.role === "admin") return "管理员可以编辑全部房间、大货架、货位、产品与记录。";
   if (user.role === "viewer") return "当前账号为只读查看，不能保存出入库或修改产品。";
-  const shelves = state.shelves.filter((shelf) => user.shelfIds.includes(shelf.id)).map((shelf) => shelf.code);
-  return `可编辑货架：${shelves.join("、") || "暂无"}`;
+  const racks = state.shelves.filter((rack) => user.rackIds.includes(rack.id)).map((rack) => rack.code);
+  return `可编辑大货架：${racks.join("、") || "暂无"}`;
 }
 
 function renderStats() {
@@ -164,8 +208,8 @@ function renderFilters() {
   fillRoomSelect($("#roomSelect"), activeRoomId, false);
   fillRoomSelect($("#inventoryRoom"), $("#inventoryRoom").value || "all", true);
   fillRoomSelect($("#analyticsRoom"), $("#analyticsRoom").value || "all", true);
-  fillShelfSelect($("#inventoryShelf"), $("#inventoryShelf").value || "all", true);
-  fillShelfSelect($("#productShelf"), $("#productShelf").value || selectedShelfId, false);
+  fillSlotSelect($("#inventoryShelf"), $("#inventoryShelf").value || "all", true);
+  fillSlotSelect($("#productShelf"), $("#productShelf").value || defaultSlotId(), false);
 }
 
 function fillRoomSelect(select, selected, includeAll) {
@@ -174,41 +218,49 @@ function fillRoomSelect(select, selected, includeAll) {
   select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : select.options[0]?.value;
 }
 
-function fillShelfSelect(select, selected, includeAll) {
+function fillSlotSelect(select, selected, includeAll) {
   const roomFilter = $("#inventoryRoom")?.value;
-  const shelves = includeAll && roomFilter && roomFilter !== "all"
-    ? state.shelves.filter((shelf) => shelf.roomId === roomFilter)
+  const racks = includeAll && roomFilter && roomFilter !== "all"
+    ? state.shelves.filter((rack) => rack.roomId === roomFilter)
     : state.shelves;
-  const all = includeAll ? `<option value="all">全部货架</option>` : "";
-  select.innerHTML = all + shelves.map((shelf) => `<option value="${shelf.id}">${shelf.code} · ${shelf.name}</option>`).join("");
+  const options = racks.flatMap((rack) => rackSlots(rack).map((slot) => ({ rack, slot })));
+  const all = includeAll ? `<option value="all">全部货位</option>` : "";
+  select.innerHTML = all + options.map(({ rack, slot }) => `<option value="${slot.id}">${slot.label} · ${rack.name} · 第${slot.level}层${slot.side}</option>`).join("");
   select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : select.options[0]?.value;
+}
+
+function defaultSlotId() {
+  const rack = state.shelves.find((item) => item.id === selectedRackId) || state.shelves[0];
+  return rack ? rackSlots(rack)[0].id : "";
 }
 
 function renderMap() {
   const map = $("#warehouseMap");
   const room = state.rooms.find((item) => item.id === activeRoomId) || state.rooms[0];
   const query = $("#mapProductFilter").value.trim().toLowerCase();
-  const shelves = state.shelves.filter((shelf) => shelf.roomId === room.id);
+  const racks = state.shelves.filter((rack) => rack.roomId === room.id);
   map.innerHTML = `<div class="map-room-title">${room.name}<br><small>${room.note || ""}</small></div>`;
-  shelves.forEach((shelf) => {
-    const products = shelfProducts(shelf.id);
-    const visible = !query || shelf.code.toLowerCase().includes(query) || products.some((product) => {
-      return [product.vehicle, product.model, product.note].join(" ").toLowerCase().includes(query);
+  racks.forEach((rack) => {
+    const products = rackProducts(rack.id);
+    const visible = !query || rack.code.toLowerCase().includes(query) || products.some((product) => {
+      const slot = productSlot(product);
+      return [product.vehicle, product.model, product.note, slot?.label].join(" ").toLowerCase().includes(query);
     });
     if (!visible) return;
     const stock = products.reduce((sum, product) => sum + product.stock, 0);
+    const occupied = rackSlots(rack).filter((slot) => slotProducts(slot.id).length).length;
     const node = document.createElement("button");
     node.type = "button";
-    node.className = `shelf-node ${editMap ? "can-drag" : ""} ${selectedShelfId === shelf.id ? "selected" : ""}`;
-    node.dataset.shelfId = shelf.id;
-    node.style.left = `${shelf.x}%`;
-    node.style.top = `${shelf.y}%`;
-    node.style.width = `${shelf.w}%`;
-    node.style.height = `${shelf.h}%`;
+    node.className = `shelf-node ${editMap ? "can-drag" : ""} ${selectedRackId === rack.id ? "selected" : ""}`;
+    node.dataset.rackId = rack.id;
+    node.style.left = `${rack.x}%`;
+    node.style.top = `${rack.y}%`;
+    node.style.width = `${rack.w}%`;
+    node.style.height = `${rack.h}%`;
     node.innerHTML = `
-      <div class="shelf-head"><span>${shelf.code}</span><span>${products.length} 款</span></div>
-      <div class="shelf-body">${shelf.name}<br>库存 <strong class="${stock <= 0 ? "heat-empty" : stock <= 5 ? "heat-low" : "heat-good"}">${stock}</strong></div>
-      <div class="shelf-foot"><span>${canEditShelf(shelf.id) ? "可编辑" : "只读"}</span><span>${editMap ? "拖拽" : "查看"}</span></div>
+      <div class="shelf-head"><span>${rack.code}</span><span>${occupied}/8 货位</span></div>
+      <div class="shelf-body">${rack.name}<br>库存 <strong class="${stock <= 0 ? "heat-empty" : stock <= 5 ? "heat-low" : "heat-good"}">${stock}</strong></div>
+      <div class="shelf-foot"><span>${canEditRack(rack.id) ? "可编辑" : "只读"}</span><span>${editMap ? "拖拽" : "点开"}</span></div>
     `;
     map.appendChild(node);
   });
@@ -216,30 +268,57 @@ function renderMap() {
 }
 
 function renderInspector() {
-  const shelf = state.shelves.find((item) => item.id === selectedShelfId);
+  const rack = state.shelves.find((item) => item.id === selectedRackId);
   const title = $("#inspectorTitle");
   const body = $("#inspectorBody");
-  if (!shelf) {
-    title.textContent = "选择一个货架";
-    body.innerHTML = `<p class="empty-state">点击图中的货架，可以查看货架结构、产品库存和最近出入库情况。</p>`;
+  if (!rack) {
+    title.textContent = "选择一个大货架";
+    body.innerHTML = `<p class="empty-state">点击图中的大货架，可以查看 8 个货位、产品库存和最近出入库情况。</p>`;
     return;
   }
-  const products = shelfProducts(shelf.id);
-  title.textContent = `${shelf.code} · ${shelf.name}`;
-  if (!products.length) {
-    body.innerHTML = `<p class="empty-state">这个货架暂时没有产品。可以在库存表格里新增产品并分配到此货架。</p>`;
-    return;
-  }
-  body.innerHTML = products.map((product) => {
-    const recent = productMovements(product.id).sort((a, b) => b.at.localeCompare(a.at))[0];
+  const products = rackProducts(rack.id);
+  const stock = products.reduce((sum, product) => sum + product.stock, 0);
+  title.textContent = `${rack.code} · ${rack.name}`;
+  body.innerHTML = `
+    <div class="mini-product">
+      <strong>大货架结构</strong>
+      <p>上下四层、左右两列，共 8 个货位：${rack.code}-1 到 ${rack.code}-8。</p>
+      <p>当前产品 ${products.length} 款，总库存 ${stock}。</p>
+      <button class="primary-button" type="button" data-open-rack="${rack.id}">打开货位详情</button>
+    </div>
+    ${rackSlots(rack).map((slot) => {
+      const slotStock = slotProducts(slot.id).reduce((sum, product) => sum + product.stock, 0);
+      return `<div class="mini-product"><strong>${slot.label}</strong><p>第${slot.level}层${slot.side} · ${slotProducts(slot.id).length} 款产品 · 库存 ${slotStock}</p></div>`;
+    }).join("")}
+  `;
+}
+
+function renderRackDialog() {
+  const rack = state.shelves.find((item) => item.id === openedRackId);
+  if (!rack) return;
+  const products = rackProducts(rack.id);
+  $("#rackDialogTitle").textContent = `${rack.code} · ${rack.name}`;
+  $("#rackDialogMeta").textContent = `上下四层、左右两列，共 8 个货位；当前 ${products.length} 款产品，总库存 ${products.reduce((sum, product) => sum + product.stock, 0)}`;
+  $("#rackSlotGrid").innerHTML = rackSlots(rack).map((slot) => {
+    const list = slotProducts(slot.id);
     return `
-      <div class="mini-product">
-        <strong>${product.vehicle}</strong>
-        <span class="tag">${product.model}</span>
-        <span class="tag green">${product.android || "未填"}</span>
-        <p>库存：<strong>${product.stock}</strong>，配置：${product.storage || "未填"}</p>
-        <p>${recent ? `最近：${recent.type === "in" ? "入库" : "出库"} ${recent.qty} 件 · ${formatDateTime(recent.at)}` : "暂无出入库记录"}</p>
-      </div>
+      <section class="slot-card">
+        <h4><span>${slot.label}</span><span class="tag">第${slot.level}层${slot.side}</span></h4>
+        <div class="slot-products">
+          ${list.map((product) => `
+            <article class="slot-product">
+              <div>
+                <strong>${product.model}</strong>
+                <small>${product.vehicle} · ${product.android || "未填"} · ${product.storage || "无"} · 库存 ${product.stock}</small>
+              </div>
+              <div class="slot-product-actions">
+                <button type="button" data-slot-out="${product.id}" ${canEditProduct(product) && product.stock > 0 ? "" : "disabled"}>出库</button>
+                <button type="button" data-edit-product="${product.id}" ${canEditProduct(product) ? "" : "disabled"}>编辑</button>
+              </div>
+            </article>
+          `).join("") || `<p class="empty-state">暂无产品，可在库存表格中新增并分配到 ${slot.label}。</p>`}
+        </div>
+      </section>
     `;
   }).join("");
 }
@@ -247,18 +326,18 @@ function renderInspector() {
 function renderInventory() {
   const query = $("#inventorySearch").value.trim().toLowerCase();
   const roomId = $("#inventoryRoom").value || "all";
-  const shelfId = $("#inventoryShelf").value || "all";
+  const slotId = $("#inventoryShelf").value || "all";
   const products = state.products.filter((product) => {
-    const shelf = productShelf(product);
-    if (!shelf) return false;
-    const matchesRoom = roomId === "all" || shelf.roomId === roomId;
-    const matchesShelf = shelfId === "all" || shelf.id === shelfId;
-    const matchesQuery = !query || [product.vehicle, product.model, product.note, product.android, product.storage, shelf.code].join(" ").toLowerCase().includes(query);
-    return matchesRoom && matchesShelf && matchesQuery;
+    const rack = productRack(product);
+    const slot = productSlot(product);
+    const matchesRoom = roomId === "all" || rack?.roomId === roomId;
+    const matchesSlot = slotId === "all" || product.slotId === slotId;
+    const matchesQuery = !query || [product.vehicle, product.model, product.note, product.android, product.storage, rack?.code, slot?.label].join(" ").toLowerCase().includes(query);
+    return matchesRoom && matchesSlot && matchesQuery;
   });
   $("#inventoryTable").innerHTML = products.map((product, index) => {
-    const shelf = productShelf(product);
-    const editable = canEditShelf(product.shelfId);
+    const slot = productSlot(product);
+    const editable = canEditProduct(product);
     return `
       <tr>
         <td>${index + 1}</td>
@@ -267,7 +346,7 @@ function renderInventory() {
         <td>${product.image ? `<img class="product-thumb" src="${product.image}" alt="${product.vehicle}">` : `<span class="placeholder-thumb">图片</span>`}</td>
         <td><span class="tag ${product.android.includes("14") ? "orange" : "green"}">${product.android || "未填"}</span></td>
         <td><span class="tag cyan">${product.storage || "无"}</span></td>
-        <td><span class="tag">${shelf?.code || "未分配"}</span></td>
+        <td><span class="tag">${slot?.label || "未分配"}</span></td>
         <td>${product.note || ""}</td>
         <td>${movementTotal(product.id, "in")}</td>
         <td>${movementTotal(product.id, "out")}</td>
@@ -285,8 +364,8 @@ function renderInventory() {
 
 function renderMovementForm() {
   $("#movementProduct").innerHTML = state.products.map((product) => {
-    const shelf = productShelf(product);
-    return `<option value="${product.id}">${product.model} · ${product.vehicle} · ${shelf?.code || "未分配"} · 库存 ${product.stock}</option>`;
+    const slot = productSlot(product);
+    return `<option value="${product.id}">${product.model} · ${product.vehicle} · ${slot?.label || "未分配"} · 库存 ${product.stock}</option>`;
   }).join("");
 }
 
@@ -295,17 +374,19 @@ function renderRecords() {
   const records = [...state.movements].sort((a, b) => b.at.localeCompare(a.at)).filter((record) => {
     const product = state.products.find((item) => item.id === record.productId);
     const user = state.users.find((item) => item.id === record.userId);
-    return !query || [product?.vehicle, product?.model, user?.name, record.note].join(" ").toLowerCase().includes(query);
+    const slot = product ? productSlot(product) : null;
+    return !query || [product?.vehicle, product?.model, user?.name, record.note, slot?.label].join(" ").toLowerCase().includes(query);
   });
   $("#recordList").innerHTML = records.map((record) => {
     const product = state.products.find((item) => item.id === record.productId);
     const user = state.users.find((item) => item.id === record.userId);
+    const slot = product ? productSlot(product) : null;
     return `
       <article class="record-item">
         <span class="record-type ${record.type}">${record.type === "in" ? "入库" : "出库"}</span>
         <div class="record-main">
           <strong>${product?.model || "已删除产品"} · ${product?.vehicle || ""}</strong>
-          <span>${user?.name || "未知人员"} · ${formatDateTime(record.at)} · ${record.note || "无备注"}</span>
+          <span>${slot?.label || "未分配"} · ${user?.name || "未知人员"} · ${formatDateTime(record.at)} · ${record.note || "无备注"}</span>
         </div>
         <strong>${record.qty}</strong>
       </article>
@@ -320,13 +401,11 @@ function renderAnalytics() {
   from.setDate(from.getDate() - days + 1);
   from.setHours(0, 0, 0, 0);
   const scopedProducts = state.products.filter((product) => {
-    const shelf = productShelf(product);
-    return roomId === "all" || shelf?.roomId === roomId;
+    const rack = productRack(product);
+    return roomId === "all" || rack?.roomId === roomId;
   });
   const productIds = new Set(scopedProducts.map((product) => product.id));
-  const records = state.movements.filter((movement) => {
-    return productIds.has(movement.productId) && new Date(movement.at) >= from;
-  });
+  const records = state.movements.filter((movement) => productIds.has(movement.productId) && new Date(movement.at) >= from);
   renderSalesBars(records);
   renderStockDonut(scopedProducts);
   renderTrend(records, days);
@@ -355,15 +434,15 @@ function renderSalesBars(records) {
 function renderStockDonut(products) {
   const byRoom = {};
   products.forEach((product) => {
-    const shelf = productShelf(product);
-    const room = state.rooms.find((item) => item.id === shelf?.roomId);
+    const rack = productRack(product);
+    const room = state.rooms.find((item) => item.id === rack?.roomId);
     const name = room?.name || "未分配";
     byRoom[name] = (byRoom[name] || 0) + product.stock;
   });
   const entries = Object.entries(byRoom).filter(([, value]) => value > 0);
   const total = entries.reduce((sum, [, value]) => sum + value, 0);
   let cursor = 0;
-  const segments = entries.map(([name, value], index) => {
+  const segments = entries.map(([, value], index) => {
     const start = cursor;
     const deg = total ? (value / total) * 360 : 360;
     cursor += deg;
@@ -406,7 +485,6 @@ function renderTrend(records, days) {
 }
 
 function renderPermissions() {
-  const shelves = state.shelves;
   $("#userPermissionList").innerHTML = state.users.map((user) => `
     <article class="user-card">
       <div class="user-card-head">
@@ -414,10 +492,10 @@ function renderPermissions() {
         <span class="tag ${user.role === "admin" ? "orange" : user.role === "viewer" ? "red" : "green"}">${roleName(user.role)}</span>
       </div>
       <div class="permission-grid">
-        ${shelves.map((shelf) => `
+        ${state.shelves.map((rack) => `
           <label>
-            <input type="checkbox" data-user-shelf="${user.id}:${shelf.id}" ${user.role === "admin" || user.shelfIds.includes(shelf.id) ? "checked" : ""} ${user.role === "admin" ? "disabled" : ""}>
-            ${shelf.code}
+            <input type="checkbox" data-user-rack="${user.id}:${rack.id}" ${user.role === "admin" || user.rackIds.includes(rack.id) ? "checked" : ""} ${user.role === "admin" ? "disabled" : ""}>
+            ${rack.code}
           </label>
         `).join("")}
       </div>
@@ -438,6 +516,12 @@ function setActiveView(view) {
   }[view];
 }
 
+function openRackDialog(rackId) {
+  openedRackId = rackId;
+  renderRackDialog();
+  $("#rackDialog").showModal();
+}
+
 function openProductDialog(productId) {
   const product = state.products.find((item) => item.id === productId);
   $("#productDialogTitle").textContent = product ? "编辑产品" : "新增产品";
@@ -447,7 +531,7 @@ function openProductDialog(productId) {
   $("#productImage").value = product?.image || "";
   $("#productAndroid").value = product?.android || "";
   $("#productStorage").value = product?.storage || "";
-  $("#productShelf").value = product?.shelfId || selectedShelfId || state.shelves[0]?.id;
+  $("#productShelf").value = product?.slotId || defaultSlotId();
   $("#productStock").value = product?.stock ?? 0;
   $("#productNote").value = product?.note || "";
   $("#productDialog").showModal();
@@ -456,7 +540,7 @@ function openProductDialog(productId) {
 function addMovement({ productId, type, qty, at, note }) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) return alert("产品不存在。");
-  if (!canEditShelf(product.shelfId)) return alert("当前人员没有这个货架的编辑权限。");
+  if (!canEditProduct(product)) return alert("当前人员没有这个大货架的编辑权限。");
   if (type === "out" && product.stock < qty) return alert("库存不足，不能出库。");
   product.stock += type === "in" ? qty : -qty;
   state.movements.push({ id: uid("m"), productId, type, qty, at, note, userId: state.activeUserId });
@@ -476,23 +560,32 @@ document.addEventListener("click", (event) => {
   const tab = event.target.closest(".nav-tab");
   if (tab) setActiveView(tab.dataset.view);
 
-  const shelfNode = event.target.closest(".shelf-node");
-  if (shelfNode && !dragState) {
-    selectedShelfId = shelfNode.dataset.shelfId;
+  const rackNode = event.target.closest(".shelf-node");
+  if (rackNode && !dragState) {
+    selectedRackId = rackNode.dataset.rackId;
     renderMap();
+    if (!editMap) openRackDialog(selectedRackId);
   }
 
-  const editProduct = event.target.closest("[data-edit-product]");
-  if (editProduct) openProductDialog(editProduct.dataset.editProduct);
+  const openRack = event.target.closest("[data-open-rack]");
+  if (openRack) openRackDialog(openRack.dataset.openRack);
 
-  const quickOut = event.target.closest("[data-quick-out]");
+  const editProduct = event.target.closest("[data-edit-product]");
+  if (editProduct) {
+    if ($("#rackDialog").open) $("#rackDialog").close();
+    openProductDialog(editProduct.dataset.editProduct);
+  }
+
+  const quickOut = event.target.closest("[data-quick-out], [data-slot-out]");
   if (quickOut) {
-    const product = state.products.find((item) => item.id === quickOut.dataset.quickOut);
+    const productId = quickOut.dataset.quickOut || quickOut.dataset.slotOut;
+    const product = state.products.find((item) => item.id === productId);
     $("#movementType").value = "out";
     $("#movementProduct").value = product.id;
     $("#movementQty").value = 1;
     $("#movementTime").value = todayInputValue();
     setActiveView("movement");
+    if ($("#rackDialog").open) $("#rackDialog").close();
   }
 });
 
@@ -503,7 +596,7 @@ $("#activeUser").addEventListener("change", (event) => {
 
 $("#roomSelect").addEventListener("change", (event) => {
   activeRoomId = event.target.value;
-  selectedShelfId = state.shelves.find((shelf) => shelf.roomId === activeRoomId)?.id;
+  selectedRackId = state.shelves.find((rack) => rack.roomId === activeRoomId)?.id;
   render();
 });
 
@@ -514,39 +607,39 @@ $("#toggleEditMap").addEventListener("click", () => {
 });
 
 $("#addShelf").addEventListener("click", () => {
-  const roomShelves = state.shelves.filter((shelf) => shelf.roomId === activeRoomId);
-  const code = prompt("请输入货架号，例如 A-7");
+  const roomRacks = state.shelves.filter((rack) => rack.roomId === activeRoomId);
+  const code = prompt("请输入大货架编号，例如 B4");
   if (!code) return;
-  const shelf = {
-    id: uid("s"),
+  const rack = {
+    id: uid("rack"),
     roomId: activeRoomId,
     code,
-    name: `${code} 货架`,
-    x: 12 + (roomShelves.length % 3) * 26,
-    y: 42 + Math.floor(roomShelves.length / 3) * 18,
-    w: 22,
-    h: 16
+    name: `${code} 大货架`,
+    x: 10 + (roomRacks.length % 3) * 30,
+    y: 48 + Math.floor(roomRacks.length / 3) * 20,
+    w: 24,
+    h: 26
   };
-  state.shelves.push(shelf);
-  selectedShelfId = shelf.id;
+  state.shelves.push(rack);
+  selectedRackId = rack.id;
   render();
 });
 
 $("#warehouseMap").addEventListener("pointerdown", (event) => {
   const node = event.target.closest(".shelf-node");
   if (!node || !editMap) return;
-  const shelf = state.shelves.find((item) => item.id === node.dataset.shelfId);
-  if (!shelf) return;
+  const rack = state.shelves.find((item) => item.id === node.dataset.rackId);
+  if (!rack) return;
   node.setPointerCapture(event.pointerId);
   const rect = $("#warehouseMap").getBoundingClientRect();
   dragState = {
-    shelf,
+    rack,
     node,
     rect,
     startX: event.clientX,
     startY: event.clientY,
-    originalX: shelf.x,
-    originalY: shelf.y
+    originalX: rack.x,
+    originalY: rack.y
   };
   node.classList.add("dragging");
 });
@@ -555,44 +648,46 @@ $("#warehouseMap").addEventListener("pointermove", (event) => {
   if (!dragState) return;
   const dx = ((event.clientX - dragState.startX) / dragState.rect.width) * 100;
   const dy = ((event.clientY - dragState.startY) / dragState.rect.height) * 100;
-  const maxX = 100 - dragState.shelf.w;
-  const maxY = 100 - dragState.shelf.h;
-  dragState.shelf.x = Math.max(0, Math.min(maxX, dragState.originalX + dx));
-  dragState.shelf.y = Math.max(9, Math.min(maxY, dragState.originalY + dy));
-  dragState.node.style.left = `${dragState.shelf.x}%`;
-  dragState.node.style.top = `${dragState.shelf.y}%`;
+  const maxX = 100 - dragState.rack.w;
+  const maxY = 100 - dragState.rack.h;
+  dragState.rack.x = Math.max(0, Math.min(maxX, dragState.originalX + dx));
+  dragState.rack.y = Math.max(9, Math.min(maxY, dragState.originalY + dy));
+  dragState.node.style.left = `${dragState.rack.x}%`;
+  dragState.node.style.top = `${dragState.rack.y}%`;
 });
 
 $("#warehouseMap").addEventListener("pointerup", () => {
   if (!dragState) return;
   dragState.node.classList.remove("dragging");
-  selectedShelfId = dragState.shelf.id;
+  selectedRackId = dragState.rack.id;
   dragState = null;
   render();
 });
 
 ["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "recordSearch", "analyticsDays", "analyticsRoom"].forEach((id) => {
   $(`#${id}`).addEventListener("input", () => {
-    if (id === "inventoryRoom") fillShelfSelect($("#inventoryShelf"), "all", true);
+    if (id === "inventoryRoom") fillSlotSelect($("#inventoryShelf"), "all", true);
     render();
   });
 });
 
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#cancelProduct").addEventListener("click", () => $("#productDialog").close());
+$("#closeRackDialog").addEventListener("click", () => $("#rackDialog").close());
 
 $("#productForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const id = $("#productId").value;
-  const shelfId = $("#productShelf").value;
-  if (!canEditShelf(shelfId)) return alert("当前人员没有这个货架的编辑权限。");
+  const slotId = $("#productShelf").value;
+  const rackId = slotId.split(":")[0];
+  if (!canEditRack(rackId)) return alert("当前人员没有这个大货架的编辑权限。");
   const payload = {
     vehicle: $("#productVehicle").value.trim(),
     model: $("#productModel").value.trim(),
     image: $("#productImage").value.trim(),
     android: $("#productAndroid").value.trim(),
     storage: $("#productStorage").value.trim(),
-    shelfId,
+    slotId,
     stock: Number($("#productStock").value || 0),
     note: $("#productNote").value.trim()
   };
@@ -626,20 +721,20 @@ $("#userForm").addEventListener("submit", (event) => {
     id: uid("u"),
     name: $("#userName").value.trim(),
     role: $("#userRole").value,
-    shelfIds: []
+    rackIds: []
   });
   $("#userName").value = "";
   render();
 });
 
 $("#userPermissionList").addEventListener("change", (event) => {
-  const box = event.target.closest("[data-user-shelf]");
+  const box = event.target.closest("[data-user-rack]");
   if (!box) return;
-  const [userId, shelfId] = box.dataset.userShelf.split(":");
+  const [userId, rackId] = box.dataset.userRack.split(":");
   const user = state.users.find((item) => item.id === userId);
   if (!user || user.role === "admin") return;
-  if (box.checked && !user.shelfIds.includes(shelfId)) user.shelfIds.push(shelfId);
-  if (!box.checked) user.shelfIds = user.shelfIds.filter((id) => id !== shelfId);
+  if (box.checked && !user.rackIds.includes(rackId)) user.rackIds.push(rackId);
+  if (!box.checked) user.rackIds = user.rackIds.filter((id) => id !== rackId);
   render();
 });
 
@@ -647,7 +742,7 @@ $("#resetDemo").addEventListener("click", () => {
   if (!confirm("确认恢复示例数据？当前浏览器里的修改会被覆盖。")) return;
   state = structuredClone(starterData);
   activeRoomId = state.rooms[0].id;
-  selectedShelfId = state.shelves.find((shelf) => shelf.roomId === activeRoomId)?.id;
+  selectedRackId = state.shelves.find((rack) => rack.roomId === activeRoomId)?.id;
   render();
 });
 
