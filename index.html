@@ -359,6 +359,19 @@
       </form>
     </dialog>
 
+    <dialog id="movementDetailDialog" class="modal movement-detail-modal">
+      <form method="dialog">
+        <div class="rack-dialog-head">
+          <div>
+            <h3 id="movementDetailTitle">出入库详情</h3>
+            <p id="movementDetailMeta"></p>
+          </div>
+          <button class="ghost-button" value="cancel" type="button" id="closeMovementDetail">关闭</button>
+        </div>
+        <div id="movementDetailList" class="movement-detail-list"></div>
+      </form>
+    </dialog>
+
     <div id="movementToast" class="movement-toast" aria-live="polite" aria-atomic="true"></div>
     <div id="comboDropdown" class="combo-dropdown"></div>
     <script src="./app.js"></script>

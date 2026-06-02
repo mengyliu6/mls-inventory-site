@@ -426,8 +426,8 @@ function renderInventory() {
         <td>${comboCell(product, "storage", "", editable)}</td>
         <td><select class="table-edit" data-product-field="${product.id}:slotId" ${editable ? "" : "disabled"}>${slotOptions(product.slotId)}</select></td>
         <td><input class="table-edit" data-product-field="${product.id}:note" value="${escapeAttr(product.note || "")}" ${editable ? "" : "disabled"}></td>
-        <td>${movementTotal(product.id, "in")}</td>
-        <td>${movementTotal(product.id, "out")}</td>
+        <td><button class="movement-count" type="button" data-show-movements="${product.id}:in">${movementTotal(product.id, "in")}</button></td>
+        <td><button class="movement-count" type="button" data-show-movements="${product.id}:out">${movementTotal(product.id, "out")}</button></td>
         <td><input class="table-edit stock-edit ${product.stock <= 0 ? "heat-empty" : product.stock <= 2 ? "heat-low" : "heat-good"}" type="number" min="0" data-product-field="${product.id}:stock" value="${product.stock}" ${editable ? "" : "disabled"}></td>
         <td>
           <div class="row-actions">
@@ -528,6 +528,31 @@ function renderRecords() {
       </article>
     `;
   }).join("") || `<p class="empty-state">暂无记录。</p>`;
+}
+
+function openMovementDetails(productId, type) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return;
+  const slot = productSlot(product);
+  const records = productMovements(productId)
+    .filter((record) => record.type === type)
+    .sort((a, b) => b.at.localeCompare(a.at));
+  $("#movementDetailTitle").textContent = `${type === "in" ? "入库" : "出库"}详情`;
+  $("#movementDetailMeta").textContent = `${product.vehicle} · ${product.model} · ${slot?.label || "未分配"} · 共 ${records.length} 条`;
+  $("#movementDetailList").innerHTML = records.map((record) => {
+    const user = state.users.find((item) => item.id === record.userId);
+    return `
+      <article class="movement-detail-item">
+        <span class="record-type ${record.type}">${record.type === "in" ? "入库" : "出库"}</span>
+        <div>
+          <strong>${formatDateTime(record.at)} · ${record.qty} 件</strong>
+          <p>${record.stockBefore !== null ? `库存 ${record.stockBefore} → ${record.stockAfter}` : "库存变化未记录"} · ${user?.name || "未知人员"}${record.salesPerson ? ` · 销售：${record.salesPerson}` : ""}</p>
+          <small>${record.note || "无备注"}</small>
+        </div>
+      </article>
+    `;
+  }).join("") || `<p class="empty-state">暂无${type === "in" ? "入库" : "出库"}记录。</p>`;
+  $("#movementDetailDialog").showModal();
 }
 
 function renderAnalytics() {
@@ -676,10 +701,12 @@ function renderFieldOptions() {
       <h4>${label}</h4>
       <div>
         ${(state.fieldOptions[field] || []).map((value) => `
-          <button class="option-pill" type="button" data-option-field="${field}" data-option-value="${escapeAttr(value)}" title="删除 ${escapeAttr(value)}">
-            ${value}<span>×</span>
-          </button>
-        `).join("") || `<p class="empty-state">暂无选项。表格中输入后会自动添加。</p>`}
+          <span class="option-pill">
+            ${value}<button type="button" data-option-field="${field}" data-option-value="${escapeAttr(value)}" title="删除 ${escapeAttr(value)}">×</button>
+          </span>
+        `).join("")}
+        <button class="option-add" type="button" data-add-option="${field}">+</button>
+        <input class="option-add-input hidden" data-add-option-input="${field}" placeholder="输入${label}">
       </div>
     </section>
   `).join("");
@@ -703,16 +730,18 @@ function showComboDropdown(input) {
   const source = input.dataset.comboSource;
   const options = comboOptions(source);
   const dropdown = $("#comboDropdown");
-  if (!source || !options.length || input.disabled) {
+  if (!source || input.disabled) {
     hideComboDropdown();
     return;
   }
   dropdown.dataset.targetId = input.id || "";
   dropdown.dataset.targetField = input.dataset.productField || "";
-  dropdown.innerHTML = options.map((value) => `<button type="button" data-combo-value="${escapeAttr(value)}">${value}</button>`).join("");
+  dropdown.innerHTML = options.length
+    ? options.map((value) => `<button type="button" data-combo-value="${escapeAttr(value)}">${value}</button>`).join("")
+    : `<div class="combo-empty">暂无选项，输入后会自动添加</div>`;
   const rect = input.getBoundingClientRect();
-  dropdown.style.left = `${rect.left + window.scrollX}px`;
-  dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+  dropdown.style.left = `${rect.left}px`;
+  dropdown.style.top = `${rect.bottom + 4}px`;
   dropdown.style.width = `${rect.width}px`;
   dropdown.classList.add("show");
 }
@@ -936,6 +965,13 @@ document.addEventListener("click", (event) => {
     hideComboDropdown();
   }
 
+  const movementCount = event.target.closest("[data-show-movements]");
+  if (movementCount) {
+    const [productId, type] = movementCount.dataset.showMovements.split(":");
+    openMovementDetails(productId, type);
+    return;
+  }
+
   const tab = event.target.closest(".nav-tab");
   if (tab) setActiveView(tab.dataset.view);
 
@@ -1106,6 +1142,7 @@ function updateProductField(input) {
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#cancelProduct").addEventListener("click", () => $("#productDialog").close());
 $("#closeRackDialog").addEventListener("click", () => $("#rackDialog").close());
+$("#closeMovementDetail").addEventListener("click", () => $("#movementDetailDialog").close());
 
 $("#productForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1205,12 +1242,40 @@ $("#salesForm").addEventListener("submit", (event) => {
 });
 
 $("#fieldOptionList").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-option-field]");
-  if (!button) return;
-  const { optionField, optionValue } = button.dataset;
-  state.fieldOptions[optionField] = (state.fieldOptions[optionField] || []).filter((value) => value !== optionValue);
-  render();
+  const deleteButton = event.target.closest("[data-option-field]");
+  if (deleteButton) {
+    const { optionField, optionValue } = deleteButton.dataset;
+    state.fieldOptions[optionField] = (state.fieldOptions[optionField] || []).filter((value) => value !== optionValue);
+    render();
+    return;
+  }
+  const addButton = event.target.closest("[data-add-option]");
+  if (!addButton) return;
+  const field = addButton.dataset.addOption;
+  const input = $(`[data-add-option-input="${field}"]`);
+  addButton.classList.add("hidden");
+  input.classList.remove("hidden");
+  input.focus();
 });
+
+$("#fieldOptionList").addEventListener("keydown", (event) => {
+  const input = event.target.closest("[data-add-option-input]");
+  if (!input || event.key !== "Enter") return;
+  event.preventDefault();
+  saveOptionInput(input);
+});
+
+$("#fieldOptionList").addEventListener("focusout", (event) => {
+  const input = event.target.closest("[data-add-option-input]");
+  if (input) saveOptionInput(input);
+});
+
+function saveOptionInput(input) {
+  const field = input.dataset.addOptionInput;
+  addFieldOption(field, input.value);
+  input.value = "";
+  render();
+}
 
 $("#userPermissionList").addEventListener("change", (event) => {
   const box = event.target.closest("[data-user-rack]");
