@@ -452,6 +452,40 @@ function renderMovementForm() {
     const slot = productSlot(product);
     return `<option value="${product.id}">${product.model} · ${product.vehicle} · ${slot?.label || "未分配"} · 库存 ${product.stock}</option>`;
   }).join("");
+  updateMovementPreview();
+}
+
+function selectedMovementProduct() {
+  return state.products.find((product) => product.id === $("#movementProduct").value);
+}
+
+function updateMovementPreview() {
+  const product = selectedMovementProduct();
+  const type = $("#movementType").value;
+  const qty = Math.max(1, Number($("#movementQty").value || 1));
+  const isOut = type === "out";
+  $("#movementSalesRow").classList.toggle("hidden", !isOut);
+  $("#movementSalesPerson").required = isOut;
+  $("#movementSubmitButton").textContent = isOut ? "预览并确认出库" : "预览并确认入库";
+  if (!product) {
+    $("#movementPreview").innerHTML = `<p class="empty-state">请选择产品。</p>`;
+    return;
+  }
+  const slot = productSlot(product);
+  const afterStock = isOut ? product.stock - qty : product.stock + qty;
+  const invalidOut = isOut && afterStock < 0;
+  $("#movementPreview").innerHTML = `
+    <div class="preview-product">
+      <strong>${product.vehicle}</strong>
+      <span>${product.model} · ${slot?.label || "未分配货位"} · ${product.android || "未填"} · ${product.storage || "无"}</span>
+    </div>
+    <div class="preview-stock ${invalidOut ? "invalid" : ""}">
+      <div><span>当前库存</span><strong>${product.stock}</strong></div>
+      <div class="stock-arrow">→</div>
+      <div><span>${isOut ? "出库后" : "入库后"}</span><strong>${afterStock}</strong></div>
+    </div>
+    ${invalidOut ? `<p class="preview-warning">库存不足，请调整出库数量。</p>` : ""}
+  `;
 }
 
 function renderRecords() {
@@ -728,14 +762,14 @@ function openProductDialog(productId) {
   $("#productDialog").showModal();
 }
 
-function addMovement({ productId, type, qty, at, note, source = "manual" }) {
+function addMovement({ productId, type, qty, at, note, source = "manual", salesPerson = "" }) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) return alert("产品不存在。");
   if (!canEditProduct(product)) return alert("当前人员没有这个大货架的编辑权限。");
   if (type === "out" && product.stock < qty) return alert("库存不足，不能出库。");
   const beforeStock = product.stock;
   const afterStock = type === "in" ? beforeStock + qty : beforeStock - qty;
-  pendingMovement = { productId, type, qty, at, note, beforeStock, afterStock, source };
+  pendingMovement = { productId, type, qty, at, note, salesPerson, beforeStock, afterStock, source };
   openMovementConfirm();
 }
 
@@ -759,7 +793,7 @@ function openMovementConfirm() {
   $("#confirmBeforeStock").textContent = pendingMovement.beforeStock;
   $("#confirmAfterStock").textContent = pendingMovement.afterStock;
   $("#confirmNote").value = pendingMovement.note || "";
-  $("#confirmSalesPerson").value = "";
+  $("#confirmSalesPerson").value = pendingMovement.salesPerson || "";
   $("#salesField").classList.toggle("hidden", !isOut);
   $("#confirmSalesPerson").required = isOut;
   $("#movementConfirmDialog").showModal();
@@ -812,7 +846,7 @@ function adjustFromSlot(productId, type) {
     type,
     qty,
     at: todayInputValue(),
-    note: "仓库图示直接操作",
+    note: type === "out" ? "仓库图示直接出库" : "仓库图示直接入库",
     source: "slot"
   });
 }

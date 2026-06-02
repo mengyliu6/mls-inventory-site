@@ -172,15 +172,20 @@
                 <label for="movementQty">数量</label>
                 <input id="movementQty" type="number" min="1" value="1" required />
               </div>
+              <div id="movementSalesRow" class="field-row hidden">
+                <label for="movementSalesPerson">销售人员</label>
+                <input id="movementSalesPerson" list="salesPeopleOptions" placeholder="选择或输入销售" />
+              </div>
               <div class="field-row">
                 <label for="movementTime">时间</label>
                 <input id="movementTime" type="datetime-local" required />
               </div>
+              <div id="movementPreview" class="movement-preview"></div>
               <div class="field-row">
                 <label for="movementNote">备注</label>
-                <textarea id="movementNote" rows="3" placeholder="客户、订单、直播间、调拨原因等"></textarea>
+                <textarea id="movementNote" rows="3" placeholder="直播间、调拨原因、临时说明等"></textarea>
               </div>
-              <button class="primary-button" type="submit">保存记录</button>
+              <button id="movementSubmitButton" class="primary-button" type="submit">预览并确认</button>
             </form>
 
             <div class="records-panel">
