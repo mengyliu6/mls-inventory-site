@@ -421,10 +421,10 @@ function renderInventory() {
       <tr>
         <td>${(inventoryPage - 1) * pageSize + index + 1}</td>
         <td><input class="table-edit" data-product-field="${product.id}:vehicle" value="${escapeAttr(product.vehicle)}" ${editable ? "" : "disabled"}></td>
-        <td><input class="table-edit strong-edit" list="modelOptions" data-product-field="${product.id}:model" value="${escapeAttr(product.model)}" ${editable ? "" : "disabled"}></td>
+        <td>${comboCell(product, "model", "strong-edit", editable)}</td>
         <td>${product.image ? `<img class="product-thumb" src="${product.image}" alt="${product.vehicle}">` : `<span class="placeholder-thumb">图片</span>`}</td>
-        <td><input class="table-edit" list="systemOptions" data-product-field="${product.id}:android" value="${escapeAttr(product.android || "")}" ${editable ? "" : "disabled"}></td>
-        <td><input class="table-edit" list="storageOptions" data-product-field="${product.id}:storage" value="${escapeAttr(product.storage || "")}" ${editable ? "" : "disabled"}></td>
+        <td>${comboCell(product, "android", "", editable)}</td>
+        <td>${comboCell(product, "storage", "", editable)}</td>
         <td><select class="table-edit" data-product-field="${product.id}:slotId" ${editable ? "" : "disabled"}>${slotOptions(product.slotId)}</select></td>
         <td><input class="table-edit" data-product-field="${product.id}:note" value="${escapeAttr(product.note || "")}" ${editable ? "" : "disabled"}></td>
         <td>${movementTotal(product.id, "in")}</td>
@@ -445,6 +445,29 @@ function slotOptions(selectedSlotId) {
   return state.shelves.flatMap((rack) => rackSlots(rack).map((slot) => {
     return `<option value="${slot.id}" ${slot.id === selectedSlotId ? "selected" : ""}>${slot.label}</option>`;
   })).join("");
+}
+
+function comboCell(product, field, extraClass, editable) {
+  const value = product[field] || "";
+  return `
+    <div class="combo-cell">
+      <input class="table-edit ${extraClass}" data-product-field="${product.id}:${field}" value="${escapeAttr(value)}" ${editable ? "" : "disabled"}>
+      <select class="combo-picker" data-product-field="${product.id}:${field}" ${editable ? "" : "disabled"} aria-label="选择${fieldLabel(field)}">
+        <option value="">选择</option>
+        ${fieldOptionChoices(field, value)}
+      </select>
+    </div>
+  `;
+}
+
+function fieldOptionChoices(field, selectedValue) {
+  return (state.fieldOptions[field] || []).map((value) => {
+    return `<option value="${escapeAttr(value)}" ${value === selectedValue ? "selected" : ""}>${value}</option>`;
+  }).join("");
+}
+
+function fieldLabel(field) {
+  return { model: "型号", android: "系统版本", storage: "储存配置" }[field] || field;
 }
 
 function renderMovementForm() {
@@ -494,11 +517,16 @@ function updateMovementPreview() {
 
 function renderRecords() {
   const query = $("#recordSearch").value.trim().toLowerCase();
+  const typeFilter = $("#recordTypeFilter")?.value || "all";
+  const salesFilter = $("#recordSalesFilter")?.value || "all";
   const records = [...state.movements].sort((a, b) => b.at.localeCompare(a.at)).filter((record) => {
     const product = state.products.find((item) => item.id === record.productId);
     const user = state.users.find((item) => item.id === record.userId);
     const slot = product ? productSlot(product) : null;
-    return !query || [product?.vehicle, product?.model, user?.name, record.note, slot?.label].join(" ").toLowerCase().includes(query);
+    const matchesType = typeFilter === "all" || record.type === typeFilter;
+    const matchesSales = salesFilter === "all" || record.salesPerson === salesFilter;
+    const matchesQuery = !query || [product?.vehicle, product?.model, user?.name, record.note, record.salesPerson, slot?.label].join(" ").toLowerCase().includes(query);
+    return matchesType && matchesSales && matchesQuery;
   });
   $("#recordList").innerHTML = records.map((record) => {
     const product = state.products.find((item) => item.id === record.productId);
@@ -648,6 +676,11 @@ function renderPermissions() {
 function renderSalesPeople() {
   const options = state.salesPeople.map((name) => `<option value="${name}"></option>`).join("");
   $("#salesPeopleOptions").innerHTML = options;
+  const selectedSales = $("#recordSalesFilter")?.value || "all";
+  if ($("#recordSalesFilter")) {
+    $("#recordSalesFilter").innerHTML = `<option value="all">全部销售</option>` + state.salesPeople.map((name) => `<option value="${escapeAttr(name)}">${name}</option>`).join("");
+    $("#recordSalesFilter").value = selectedSales === "all" || state.salesPeople.includes(selectedSales) ? selectedSales : "all";
+  }
   $("#salesPeopleList").innerHTML = state.salesPeople.map((name) => `
     <span class="sales-pill">${name}</span>
   `).join("") || `<p class="empty-state">暂无销售人员。</p>`;
@@ -773,7 +806,12 @@ function addMovement({ productId, type, qty, at, note, source = "manual", salesP
   if (type === "out" && product.stock < qty) return alert("库存不足，不能出库。");
   const beforeStock = product.stock;
   const afterStock = type === "in" ? beforeStock + qty : beforeStock - qty;
-  pendingMovement = { productId, type, qty, at, note, salesPerson, beforeStock, afterStock, source };
+  const movement = { productId, type, qty, at, note, salesPerson, beforeStock, afterStock, source };
+  if (source === "form") {
+    commitMovement(movement);
+    return;
+  }
+  pendingMovement = movement;
   openMovementConfirm();
 }
 
@@ -981,7 +1019,7 @@ $("#warehouseMap").addEventListener("pointerup", () => {
   render();
 });
 
-["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "inventorySystem", "inventoryStock", "inventoryPageSize", "recordSearch", "analyticsDays", "analyticsRoom", "analyticsRack"].forEach((id) => {
+["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "inventorySystem", "inventoryStock", "inventoryPageSize", "recordSearch", "recordTypeFilter", "recordSalesFilter", "analyticsDays", "analyticsRoom", "analyticsRack"].forEach((id) => {
   $(`#${id}`).addEventListener("input", () => {
     if (id === "inventoryRoom") fillSlotSelect($("#inventoryShelf"), "all", true);
     if (id === "analyticsRoom") fillAnalyticsRackSelect();
@@ -1016,6 +1054,7 @@ function updateProductField(input) {
   const [productId, field] = input.dataset.productField.split(":");
   const product = state.products.find((item) => item.id === productId);
   if (!product || !canEditProduct(product)) return;
+  if (input.classList.contains("combo-picker") && !input.value) return;
   if (field === "slotId" && !canEditRack(input.value.split(":")[0])) {
     alert("当前人员没有目标大货架的编辑权限。");
     renderInventory();
@@ -1063,7 +1102,7 @@ $("#productForm").addEventListener("submit", (event) => {
 $("#movementForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const type = $("#movementType").value;
-  const salesPerson = $("#movementSalesPerson").value.trim();
+  const salesPerson = type === "out" ? resolveSalesPerson($("#movementSalesPerson").value) : "";
   if (type === "out" && !salesPerson) {
     alert("出库需要填写销售人员。");
     $("#movementSalesPerson").focus();

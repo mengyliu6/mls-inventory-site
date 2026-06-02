@@ -191,7 +191,17 @@
             <div class="records-panel">
               <div class="panel-head">
                 <h3>最近记录</h3>
-                <input id="recordSearch" type="search" placeholder="搜索记录" />
+                <div class="record-filters">
+                  <input id="recordSearch" type="search" placeholder="搜索记录" />
+                  <select id="recordTypeFilter">
+                    <option value="all">全部类型</option>
+                    <option value="in">只看入库</option>
+                    <option value="out">只看出库</option>
+                  </select>
+                  <select id="recordSalesFilter">
+                    <option value="all">全部销售</option>
+                  </select>
+                </div>
               </div>
               <div id="recordList" class="record-list"></div>
             </div>

@@ -552,6 +552,22 @@ textarea:focus {
   background: #fff;
 }
 
+.combo-cell {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) 92px;
+  gap: 6px;
+  align-items: center;
+}
+
+.combo-picker {
+  min-width: 92px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px 6px;
+  color: #344054;
+}
+
 .strong-edit {
   font-weight: 900;
 }
@@ -674,6 +690,21 @@ textarea:focus {
   gap: 14px;
   align-items: center;
   margin-bottom: 12px;
+}
+
+.record-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: end;
+}
+
+.record-filters input {
+  width: 230px;
+}
+
+.record-filters select {
+  width: 132px;
 }
 
 .record-list {
