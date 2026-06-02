@@ -537,6 +537,45 @@ textarea:focus {
   padding: 6px 8px;
 }
 
+.table-edit {
+  width: 100%;
+  min-width: 96px;
+  border-color: transparent;
+  background: transparent;
+  padding: 7px 8px;
+  text-align: inherit;
+}
+
+.table-edit:hover,
+.table-edit:focus {
+  border-color: #cbd5e1;
+  background: #fff;
+}
+
+.strong-edit {
+  font-weight: 900;
+}
+
+.stock-edit {
+  max-width: 86px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+.pagination-bar > div {
+  display: flex;
+  gap: 8px;
+}
+
 .movement-grid,
 .permissions-layout {
   display: grid;
@@ -655,49 +694,6 @@ textarea:focus {
   background: linear-gradient(90deg, #0ea5e9, #2563eb);
 }
 
-.donut-wrap {
-  display: grid;
-  grid-template-columns: 210px 1fr;
-  gap: 18px;
-  align-items: center;
-}
-
-.donut-chart {
-  width: 190px;
-  height: 190px;
-  border-radius: 50%;
-  background: conic-gradient(#2563eb 0deg, #2563eb 360deg);
-  position: relative;
-}
-
-.donut-chart::after {
-  content: "";
-  position: absolute;
-  inset: 48px;
-  border-radius: 50%;
-  background: #fff;
-}
-
-.legend {
-  display: grid;
-  gap: 10px;
-}
-
-.legend-item {
-  display: grid;
-  grid-template-columns: 12px 1fr auto;
-  gap: 8px;
-  align-items: center;
-  color: #475467;
-  font-size: 13px;
-}
-
-.legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-}
-
 .trend-chart {
   display: flex;
   align-items: end;
@@ -741,6 +737,45 @@ textarea:focus {
 .trend-label {
   color: #667085;
   font-size: 10px;
+}
+
+.inbound-timeline {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 11px 12px;
+}
+
+.timeline-item time {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timeline-item strong {
+  display: block;
+}
+
+.timeline-item span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.version-fill {
+  background: linear-gradient(90deg, #16a34a, #0891b2);
 }
 
 .user-permission-list {
@@ -860,6 +895,7 @@ textarea:focus {
 .slot-card {
   position: relative;
   min-height: 170px;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f8fafc;
@@ -949,6 +985,42 @@ textarea:focus {
   padding: 6px 8px;
 }
 
+.slot-flow-overlay {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  min-height: 58px;
+  padding: 12px 16px;
+  color: #fff;
+  font-weight: 900;
+  transform: translateX(-102%);
+  animation: slotFlow 2200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.slot-flow-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.92;
+}
+
+.slot-flow-overlay.flow-in::before {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.slot-flow-overlay.flow-out::before {
+  background: linear-gradient(90deg, #ea580c, #f97316);
+}
+
+.slot-flow-overlay span {
+  font-size: 22px;
+}
+
 @keyframes slotLift {
   0% {
     transform: translateY(0) scale(1);
@@ -972,6 +1044,25 @@ textarea:focus {
   100% {
     background: #fff;
     transform: translateX(0);
+  }
+}
+
+@keyframes slotFlow {
+  0% {
+    opacity: 0;
+    transform: translateX(-102%);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  76% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(102%);
   }
 }
 
@@ -1074,6 +1165,23 @@ textarea:focus {
   margin-top: 12px;
   color: #475467;
   font-size: 13px;
+  font-weight: 800;
+}
+
+.sales-people-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.sales-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #344054;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 

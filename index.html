@@ -100,6 +100,26 @@
               <label for="inventoryShelf">货位</label>
               <select id="inventoryShelf"></select>
             </div>
+            <div class="control-group">
+              <label for="inventorySystem">系统版本</label>
+              <select id="inventorySystem"></select>
+            </div>
+            <div class="control-group">
+              <label for="inventoryStock">库存状态</label>
+              <select id="inventoryStock">
+                <option value="all">全部库存</option>
+                <option value="low">低库存</option>
+                <option value="empty">无库存</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="inventoryPageSize">每页</label>
+              <select id="inventoryPageSize">
+                <option value="10">10 条</option>
+                <option value="20" selected>20 条</option>
+                <option value="50">50 条</option>
+              </select>
+            </div>
             <button id="addProduct" class="primary-button" type="button">新增产品</button>
           </div>
 
@@ -111,7 +131,7 @@
                   <th>车型</th>
                   <th>型号</th>
                   <th>图片</th>
-                  <th>安卓版本</th>
+                  <th>系统版本</th>
                   <th>储存配置</th>
                   <th>货位号</th>
                   <th>备注</th>
@@ -123,6 +143,13 @@
               </thead>
               <tbody id="inventoryTable"></tbody>
             </table>
+          </div>
+          <div class="pagination-bar">
+            <span id="inventoryPageInfo">第 1 页</span>
+            <div>
+              <button id="prevInventoryPage" class="ghost-button" type="button">上一页</button>
+              <button id="nextInventoryPage" class="ghost-button" type="button">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -188,11 +215,12 @@
               <div id="salesBars" class="bar-chart"></div>
             </section>
             <section class="chart-panel">
-              <h3>库存房间占比</h3>
-              <div class="donut-wrap">
-                <div id="stockDonut" class="donut-chart"></div>
-                <div id="donutLegend" class="legend"></div>
-              </div>
+              <h3>系统版本库存</h3>
+              <div id="versionStockBars" class="bar-chart"></div>
+            </section>
+            <section class="chart-panel wide">
+              <h3>入库批次时间线</h3>
+              <div id="inboundTimeline" class="inbound-timeline"></div>
             </section>
             <section class="chart-panel wide">
               <h3>每日出入库趋势</h3>
@@ -224,6 +252,16 @@
           <h3>大货架编辑权限</h3>
               <div id="userPermissionList" class="user-permission-list"></div>
             </div>
+
+            <form id="salesForm" class="form-panel">
+              <h3>销售人员</h3>
+              <div class="field-row">
+                <label for="salesName">姓名</label>
+                <input id="salesName" placeholder="例如 Abby" />
+              </div>
+              <button class="primary-button" type="submit">添加销售</button>
+              <div id="salesPeopleList" class="sales-people-list"></div>
+            </form>
           </div>
         </section>
       </main>
@@ -237,7 +275,7 @@
           <label>车型<input id="productVehicle" required /></label>
           <label>型号<input id="productModel" required /></label>
           <label>图片地址<input id="productImage" placeholder="可留空" /></label>
-          <label>安卓版本<input id="productAndroid" placeholder="Linux / 安卓12" /></label>
+          <label>系统版本<input id="productAndroid" placeholder="Linux / 安卓12" /></label>
           <label>储存配置<input id="productStorage" placeholder="4+64 / 8+128" /></label>
           <label>货位<select id="productShelf" required></select></label>
           <label>库存<input id="productStock" type="number" min="0" value="0" required /></label>
@@ -279,7 +317,8 @@
           </div>
         </div>
         <label id="salesField" class="confirm-field">销售人员
-          <input id="confirmSalesPerson" placeholder="填写对应销售，例如 Wendy" />
+          <input id="confirmSalesPerson" list="salesPeopleOptions" placeholder="选择或输入销售，例如 Wendy" />
+          <datalist id="salesPeopleOptions"></datalist>
         </label>
         <label class="confirm-field">备注
           <textarea id="confirmNote" rows="3" placeholder="可补充说明"></textarea>

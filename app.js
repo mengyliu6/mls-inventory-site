@@ -1,6 +1,5 @@
 const STORAGE_KEY = "warehouse-inventory-v2";
 const SLOT_COUNT = 8;
-const colors = ["#2563eb", "#16a34a", "#ea580c", "#0891b2", "#7c3aed", "#dc2626"];
 
 const starterData = {
   users: [
@@ -9,6 +8,7 @@ const starterData = {
     { id: "u-hai", name: "Hai", role: "editor", rackIds: ["rack-2-b1", "rack-3-c1"] },
     { id: "u-viewer", name: "仓库查看", role: "viewer", rackIds: [] }
   ],
+  salesPeople: ["Wendy", "Hai", "Abby"],
   activeUserId: "u-admin",
   rooms: [
     { id: "room-1", name: "房间1", note: "主库存区" },
@@ -61,6 +61,7 @@ let dragState = null;
 let lastSlotPulse = null;
 let pulseTimer = null;
 let pendingMovement = null;
+let inventoryPage = 1;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -77,6 +78,7 @@ function loadState() {
 }
 
 function normalizeState(data) {
+  data.salesPeople = data.salesPeople || ["Wendy", "Hai", "Abby"];
   data.users = data.users.map((user) => ({
     ...user,
     rackIds: user.rackIds || user.shelfIds || []
@@ -84,6 +86,11 @@ function normalizeState(data) {
   data.products = data.products.map((product) => ({
     ...product,
     slotId: product.slotId || `${product.shelfId || data.shelves[0]?.id}:1`
+  }));
+  data.movements = data.movements.map((movement) => ({
+    ...movement,
+    stockBefore: movement.stockBefore ?? null,
+    stockAfter: movement.stockAfter ?? null
   }));
   return data;
 }
@@ -94,6 +101,14 @@ function saveState() {
 
 function uid(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function escapeAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function activeUser() {
@@ -175,6 +190,7 @@ function render() {
   renderRecords();
   renderAnalytics();
   renderPermissions();
+  renderSalesPeople();
   $("#permissionHint").textContent = permissionText();
   if ($("#rackDialog").open) renderRackDialog();
 }
@@ -213,6 +229,16 @@ function renderFilters() {
   fillRoomSelect($("#analyticsRoom"), $("#analyticsRoom").value || "all", true);
   fillSlotSelect($("#inventoryShelf"), $("#inventoryShelf").value || "all", true);
   fillSlotSelect($("#productShelf"), $("#productShelf").value || defaultSlotId(), false);
+  fillSystemSelect();
+}
+
+function fillSystemSelect() {
+  const select = $("#inventorySystem");
+  if (!select) return;
+  const selected = select.value || "all";
+  const systems = [...new Set(state.products.map((product) => product.android || "未填"))].sort();
+  select.innerHTML = `<option value="all">全部系统</option>` + systems.map((system) => `<option value="${system}">${system}</option>`).join("");
+  select.value = systems.includes(selected) || selected === "all" ? selected : "all";
 }
 
 function fillRoomSelect(select, selected, includeAll) {
@@ -316,6 +342,12 @@ function renderRackDialog() {
     return `
       <section class="slot-card ${lastSlotPulse?.slotId === slot.id ? `slot-pulse ${lastSlotPulse.type === "in" ? "pulse-in" : "pulse-out"}` : ""}">
         <h4><span>${slot.label}</span><span class="tag">第${slot.level}层${slot.side}</span></h4>
+        ${lastSlotPulse?.slotId === slot.id ? `
+          <div class="slot-flow-overlay ${lastSlotPulse.type === "in" ? "flow-in" : "flow-out"}">
+            <strong>${lastSlotPulse.type === "in" ? "入库" : "出库"} ${lastSlotPulse.type === "in" ? "+" : "-"}${lastSlotPulse.qty}</strong>
+            <span>${lastSlotPulse.beforeStock} → ${lastSlotPulse.afterStock}</span>
+          </div>
+        ` : ""}
         <div class="slot-products">
           ${list.map((product) => `
             <article class="slot-product ${lastSlotPulse?.productId === product.id ? "product-flash" : ""}">
@@ -341,30 +373,41 @@ function renderInventory() {
   const query = $("#inventorySearch").value.trim().toLowerCase();
   const roomId = $("#inventoryRoom").value || "all";
   const slotId = $("#inventoryShelf").value || "all";
+  const system = $("#inventorySystem")?.value || "all";
+  const stockStatus = $("#inventoryStock")?.value || "all";
+  const pageSize = Number($("#inventoryPageSize")?.value || 20);
   const products = state.products.filter((product) => {
     const rack = productRack(product);
     const slot = productSlot(product);
     const matchesRoom = roomId === "all" || rack?.roomId === roomId;
     const matchesSlot = slotId === "all" || product.slotId === slotId;
+    const matchesSystem = system === "all" || (product.android || "未填") === system;
+    const matchesStock = stockStatus === "all" || (stockStatus === "low" && product.stock > 0 && product.stock <= 2) || (stockStatus === "empty" && product.stock <= 0);
     const matchesQuery = !query || [product.vehicle, product.model, product.note, product.android, product.storage, rack?.code, slot?.label].join(" ").toLowerCase().includes(query);
-    return matchesRoom && matchesSlot && matchesQuery;
+    return matchesRoom && matchesSlot && matchesSystem && matchesStock && matchesQuery;
   });
-  $("#inventoryTable").innerHTML = products.map((product, index) => {
+  const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
+  inventoryPage = Math.min(Math.max(1, inventoryPage), totalPages);
+  const pageProducts = products.slice((inventoryPage - 1) * pageSize, inventoryPage * pageSize);
+  $("#inventoryPageInfo").textContent = `第 ${inventoryPage} / ${totalPages} 页 · 共 ${products.length} 款`;
+  $("#prevInventoryPage").disabled = inventoryPage <= 1;
+  $("#nextInventoryPage").disabled = inventoryPage >= totalPages;
+  $("#inventoryTable").innerHTML = pageProducts.map((product, index) => {
     const slot = productSlot(product);
     const editable = canEditProduct(product);
     return `
       <tr>
-        <td>${index + 1}</td>
-        <td>${product.vehicle}</td>
-        <td><strong>${product.model}</strong></td>
+        <td>${(inventoryPage - 1) * pageSize + index + 1}</td>
+        <td><input class="table-edit" data-product-field="${product.id}:vehicle" value="${escapeAttr(product.vehicle)}" ${editable ? "" : "disabled"}></td>
+        <td><input class="table-edit strong-edit" data-product-field="${product.id}:model" value="${escapeAttr(product.model)}" ${editable ? "" : "disabled"}></td>
         <td>${product.image ? `<img class="product-thumb" src="${product.image}" alt="${product.vehicle}">` : `<span class="placeholder-thumb">图片</span>`}</td>
-        <td><span class="tag ${product.android.includes("14") ? "orange" : "green"}">${product.android || "未填"}</span></td>
-        <td><span class="tag cyan">${product.storage || "无"}</span></td>
-        <td><span class="tag">${slot?.label || "未分配"}</span></td>
-        <td>${product.note || ""}</td>
+        <td><input class="table-edit" data-product-field="${product.id}:android" value="${escapeAttr(product.android || "")}" ${editable ? "" : "disabled"}></td>
+        <td><input class="table-edit" data-product-field="${product.id}:storage" value="${escapeAttr(product.storage || "")}" ${editable ? "" : "disabled"}></td>
+        <td><select class="table-edit" data-product-field="${product.id}:slotId" ${editable ? "" : "disabled"}>${slotOptions(product.slotId)}</select></td>
+        <td><input class="table-edit" data-product-field="${product.id}:note" value="${escapeAttr(product.note || "")}" ${editable ? "" : "disabled"}></td>
         <td>${movementTotal(product.id, "in")}</td>
         <td>${movementTotal(product.id, "out")}</td>
-        <td><strong class="${product.stock <= 0 ? "heat-empty" : product.stock <= 2 ? "heat-low" : "heat-good"}">${product.stock}</strong></td>
+        <td><input class="table-edit stock-edit ${product.stock <= 0 ? "heat-empty" : product.stock <= 2 ? "heat-low" : "heat-good"}" type="number" min="0" data-product-field="${product.id}:stock" value="${product.stock}" ${editable ? "" : "disabled"}></td>
         <td>
           <div class="row-actions">
             <button type="button" data-edit-product="${product.id}" ${editable ? "" : "disabled"}>编辑</button>
@@ -374,6 +417,12 @@ function renderInventory() {
       </tr>
     `;
   }).join("") || `<tr><td colspan="12" class="empty-state">没有匹配的产品。</td></tr>`;
+}
+
+function slotOptions(selectedSlotId) {
+  return state.shelves.flatMap((rack) => rackSlots(rack).map((slot) => {
+    return `<option value="${slot.id}" ${slot.id === selectedSlotId ? "selected" : ""}>${slot.label}</option>`;
+  })).join("");
 }
 
 function renderMovementForm() {
@@ -400,7 +449,7 @@ function renderRecords() {
         <span class="record-type ${record.type}">${record.type === "in" ? "入库" : "出库"}</span>
         <div class="record-main">
           <strong>${product?.model || "已删除产品"} · ${product?.vehicle || ""}</strong>
-          <span>${slot?.label || "未分配"} · ${user?.name || "未知人员"} · ${formatDateTime(record.at)}${record.salesPerson ? ` · 销售：${record.salesPerson}` : ""} · ${record.note || "无备注"}</span>
+          <span>${slot?.label || "未分配"} · ${user?.name || "未知人员"} · ${formatDateTime(record.at)}${record.stockBefore !== null ? ` · 库存 ${record.stockBefore}→${record.stockAfter}` : ""}${record.salesPerson ? ` · 销售：${record.salesPerson}` : ""} · ${record.note || "无备注"}</span>
         </div>
         <strong>${record.qty}</strong>
       </article>
@@ -421,7 +470,8 @@ function renderAnalytics() {
   const productIds = new Set(scopedProducts.map((product) => product.id));
   const records = state.movements.filter((movement) => productIds.has(movement.productId) && new Date(movement.at) >= from);
   renderSalesBars(records);
-  renderStockDonut(scopedProducts);
+  renderVersionStockBars(scopedProducts);
+  renderInboundTimeline(records);
   renderTrend(records, days);
 }
 
@@ -445,31 +495,43 @@ function renderSalesBars(records) {
   `).join("") || `<p class="empty-state">当前筛选条件下暂无出库数据。</p>`;
 }
 
-function renderStockDonut(products) {
-  const byRoom = {};
+function renderVersionStockBars(products) {
+  const totals = {};
   products.forEach((product) => {
-    const rack = productRack(product);
-    const room = state.rooms.find((item) => item.id === rack?.roomId);
-    const name = room?.name || "未分配";
-    byRoom[name] = (byRoom[name] || 0) + product.stock;
+    const key = product.android || "未填";
+    totals[key] = (totals[key] || 0) + product.stock;
   });
-  const entries = Object.entries(byRoom).filter(([, value]) => value > 0);
-  const total = entries.reduce((sum, [, value]) => sum + value, 0);
-  let cursor = 0;
-  const segments = entries.map(([, value], index) => {
-    const start = cursor;
-    const deg = total ? (value / total) * 360 : 360;
-    cursor += deg;
-    return `${colors[index % colors.length]} ${start}deg ${cursor}deg`;
-  });
-  $("#stockDonut").style.background = segments.length ? `conic-gradient(${segments.join(", ")})` : "#e2e8f0";
-  $("#donutLegend").innerHTML = entries.map(([name, value], index) => `
-    <div class="legend-item">
-      <span class="legend-color" style="background:${colors[index % colors.length]}"></span>
+  const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...rows.map(([, value]) => value));
+  $("#versionStockBars").innerHTML = rows.map(([name, value]) => `
+    <div class="bar-row">
       <span>${name}</span>
+      <div class="bar-track"><div class="bar-fill version-fill" style="width: ${(value / max) * 100}%"></div></div>
       <strong>${value}</strong>
     </div>
   `).join("") || `<p class="empty-state">暂无库存。</p>`;
+}
+
+function renderInboundTimeline(records) {
+  const rows = records
+    .filter((record) => record.type === "in")
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 18);
+  $("#inboundTimeline").innerHTML = rows.map((record) => {
+    const product = state.products.find((item) => item.id === record.productId);
+    const slot = product ? productSlot(product) : null;
+    const before = record.stockBefore ?? "未知";
+    const after = record.stockAfter ?? "未知";
+    return `
+      <article class="timeline-item">
+        <time>${formatDateTime(record.at)}</time>
+        <div>
+          <strong>${product?.vehicle || "已删除产品"}</strong>
+          <span>${product?.model || ""} · ${slot?.label || "未分配"} · 入库 ${record.qty} · 库存 ${before} → ${after}</span>
+        </div>
+      </article>
+    `;
+  }).join("") || `<p class="empty-state">当前筛选周期内暂无入库批次。</p>`;
 }
 
 function renderTrend(records, days) {
@@ -515,6 +577,64 @@ function renderPermissions() {
       </div>
     </article>
   `).join("");
+}
+
+function renderSalesPeople() {
+  const options = state.salesPeople.map((name) => `<option value="${name}"></option>`).join("");
+  $("#salesPeopleOptions").innerHTML = options;
+  $("#salesPeopleList").innerHTML = state.salesPeople.map((name) => `
+    <span class="sales-pill">${name}</span>
+  `).join("") || `<p class="empty-state">暂无销售人员。</p>`;
+}
+
+function addSalesPerson(name) {
+  const trimmed = name.trim();
+  if (!trimmed) return "";
+  const existing = state.salesPeople.find((person) => person.toLowerCase() === trimmed.toLowerCase());
+  if (existing) return existing;
+  state.salesPeople.push(trimmed);
+  state.salesPeople.sort((a, b) => a.localeCompare(b));
+  return trimmed;
+}
+
+function resolveSalesPerson(input) {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  const exact = state.salesPeople.find((person) => person.toLowerCase() === trimmed.toLowerCase());
+  if (exact) return exact;
+  const fuzzy = state.salesPeople.find((person) => isSimilarName(person, trimmed));
+  if (fuzzy && confirm(`销售人员「${trimmed}」和已有销售「${fuzzy}」很接近，是否使用已有销售「${fuzzy}」？`)) {
+    return fuzzy;
+  }
+  return addSalesPerson(trimmed);
+}
+
+function isSimilarName(a, b) {
+  const left = normalizeName(a);
+  const right = normalizeName(b);
+  if (!left || !right) return false;
+  if (left.includes(right) || right.includes(left)) return true;
+  return levenshtein(left, right) <= 2;
+}
+
+function normalizeName(value) {
+  return value.toLowerCase().replace(/\s+/g, "");
+}
+
+function levenshtein(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return dp[a.length][b.length];
 }
 
 function setActiveView(view) {
@@ -588,19 +708,19 @@ function openMovementConfirm() {
   $("#movementConfirmDialog").showModal();
 }
 
-function commitMovement({ productId, type, qty, at, note, salesPerson, source }) {
+function commitMovement({ productId, type, qty, at, note, salesPerson, source, beforeStock, afterStock }) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) return alert("产品不存在。");
   product.stock += type === "in" ? qty : -qty;
-  state.movements.push({ id: uid("m"), productId, type, qty, at, note, salesPerson, userId: state.activeUserId });
-  lastSlotPulse = { slotId: product.slotId, productId, type, qty };
+  state.movements.push({ id: uid("m"), productId, type, qty, at, note, salesPerson, stockBefore: beforeStock, stockAfter: afterStock, userId: state.activeUserId });
+  lastSlotPulse = { slotId: product.slotId, productId, type, qty, beforeStock, afterStock };
   showMovementToast({ product, type, qty });
   clearTimeout(pulseTimer);
   pulseTimer = setTimeout(() => {
     lastSlotPulse = null;
     renderMap();
     if ($("#rackDialog").open) renderRackDialog();
-  }, 1400);
+  }, 2300);
   if (source === "form") {
     $("#movementQty").value = 1;
     $("#movementNote").value = "";
@@ -763,12 +883,49 @@ $("#warehouseMap").addEventListener("pointerup", () => {
   render();
 });
 
-["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "recordSearch", "analyticsDays", "analyticsRoom"].forEach((id) => {
+["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "inventorySystem", "inventoryStock", "inventoryPageSize", "recordSearch", "analyticsDays", "analyticsRoom"].forEach((id) => {
   $(`#${id}`).addEventListener("input", () => {
     if (id === "inventoryRoom") fillSlotSelect($("#inventoryShelf"), "all", true);
+    if (id.startsWith("inventory")) inventoryPage = 1;
     render();
   });
 });
+
+$("#prevInventoryPage").addEventListener("click", () => {
+  inventoryPage -= 1;
+  renderInventory();
+});
+
+$("#nextInventoryPage").addEventListener("click", () => {
+  inventoryPage += 1;
+  renderInventory();
+});
+
+$("#inventoryTable").addEventListener("change", (event) => {
+  const input = event.target.closest("[data-product-field]");
+  if (!input) return;
+  updateProductField(input);
+});
+
+$("#inventoryTable").addEventListener("blur", (event) => {
+  const input = event.target.closest("[data-product-field]");
+  if (!input || input.tagName === "SELECT") return;
+  updateProductField(input);
+}, true);
+
+function updateProductField(input) {
+  const [productId, field] = input.dataset.productField.split(":");
+  const product = state.products.find((item) => item.id === productId);
+  if (!product || !canEditProduct(product)) return;
+  if (field === "slotId" && !canEditRack(input.value.split(":")[0])) {
+    alert("当前人员没有目标大货架的编辑权限。");
+    renderInventory();
+    return;
+  }
+  const value = field === "stock" ? Math.max(0, Number(input.value || 0)) : input.value.trim();
+  product[field] = value;
+  render();
+}
 
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#cancelProduct").addEventListener("click", () => $("#productDialog").close());
@@ -815,7 +972,7 @@ $("#movementForm").addEventListener("submit", (event) => {
 $("#movementConfirmForm").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!pendingMovement) return;
-  const salesPerson = $("#confirmSalesPerson").value.trim();
+  const salesPerson = pendingMovement.type === "out" ? resolveSalesPerson($("#confirmSalesPerson").value) : "";
   if (pendingMovement.type === "out" && !salesPerson) {
     alert("出库需要填写对应销售。");
     return;
@@ -847,6 +1004,13 @@ $("#userForm").addEventListener("submit", (event) => {
     rackIds: []
   });
   $("#userName").value = "";
+  render();
+});
+
+$("#salesForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  addSalesPerson($("#salesName").value);
+  $("#salesName").value = "";
   render();
 });
 
