@@ -174,7 +174,7 @@
               </div>
               <div id="movementSalesRow" class="field-row hidden">
                 <label for="movementSalesPerson">销售人员</label>
-                <input id="movementSalesPerson" list="salesPeopleOptions" placeholder="选择或输入销售" />
+                <input id="movementSalesPerson" class="combo-input" data-combo-source="sales" placeholder="选择或输入销售" autocomplete="off" />
               </div>
               <div class="field-row">
                 <label for="movementTime">时间</label>
@@ -297,10 +297,16 @@
         <input type="hidden" id="productId" />
         <div class="modal-grid">
           <label>车型<input id="productVehicle" required /></label>
-          <label>型号<input id="productModel" list="modelOptions" required /></label>
+          <label>型号
+            <input id="productModel" autocomplete="off" required />
+          </label>
           <label>图片地址<input id="productImage" placeholder="可留空" /></label>
-          <label>系统版本<input id="productAndroid" list="systemOptions" placeholder="Linux / 安卓12" /></label>
-          <label>储存配置<input id="productStorage" list="storageOptions" placeholder="4+64 / 8+128" /></label>
+          <label>系统版本
+            <input id="productAndroid" class="combo-input" data-combo-source="android" placeholder="Linux / 安卓12" autocomplete="off" />
+          </label>
+          <label>储存配置
+            <input id="productStorage" class="combo-input" data-combo-source="storage" placeholder="4+64 / 8+128" autocomplete="off" />
+          </label>
           <label>货位<select id="productShelf" required></select></label>
           <label>库存<input id="productStock" type="number" min="0" value="0" required /></label>
           <label class="full">备注<textarea id="productNote" rows="3"></textarea></label>
@@ -341,8 +347,7 @@
           </div>
         </div>
         <label id="salesField" class="confirm-field">销售人员
-          <input id="confirmSalesPerson" list="salesPeopleOptions" placeholder="选择或输入销售，例如 Wendy" />
-          <datalist id="salesPeopleOptions"></datalist>
+          <input id="confirmSalesPerson" class="combo-input" data-combo-source="sales" placeholder="选择或输入销售，例如 Wendy" autocomplete="off" />
         </label>
         <label class="confirm-field">备注
           <textarea id="confirmNote" rows="3" placeholder="可补充说明"></textarea>
@@ -355,10 +360,7 @@
     </dialog>
 
     <div id="movementToast" class="movement-toast" aria-live="polite" aria-atomic="true"></div>
-    <datalist id="modelOptions"></datalist>
-    <datalist id="systemOptions"></datalist>
-    <datalist id="storageOptions"></datalist>
-
+    <div id="comboDropdown" class="combo-dropdown"></div>
     <script src="./app.js"></script>
   </body>
 </html>

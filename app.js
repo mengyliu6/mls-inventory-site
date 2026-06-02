@@ -10,7 +10,6 @@ const starterData = {
   ],
   salesPeople: ["Wendy", "Hai", "Abby"],
   fieldOptions: {
-    model: ["JT5-1370", "JT5-1508", "WE-8103", "WE-8106A", "16GXSI"],
     android: ["Linux", "安卓12", "安卓13", "安卓14"],
     storage: ["无", "4+64", "6+128", "8+128"]
   },
@@ -84,8 +83,8 @@ function loadState() {
 
 function normalizeState(data) {
   data.salesPeople = data.salesPeople || ["Wendy", "Hai", "Abby"];
-  data.fieldOptions = data.fieldOptions || { model: [], android: [], storage: [] };
-  ["model", "android", "storage"].forEach((field) => {
+  data.fieldOptions = data.fieldOptions || { android: [], storage: [] };
+  ["android", "storage"].forEach((field) => {
     const fromProducts = data.products.map((product) => product[field]).filter(Boolean);
     data.fieldOptions[field] = [...new Set([...(data.fieldOptions[field] || []), ...fromProducts])].sort();
   });
@@ -421,7 +420,7 @@ function renderInventory() {
       <tr>
         <td>${(inventoryPage - 1) * pageSize + index + 1}</td>
         <td><input class="table-edit" data-product-field="${product.id}:vehicle" value="${escapeAttr(product.vehicle)}" ${editable ? "" : "disabled"}></td>
-        <td>${comboCell(product, "model", "strong-edit", editable)}</td>
+        <td><input class="table-edit strong-edit" data-product-field="${product.id}:model" value="${escapeAttr(product.model)}" ${editable ? "" : "disabled"}></td>
         <td>${product.image ? `<img class="product-thumb" src="${product.image}" alt="${product.vehicle}">` : `<span class="placeholder-thumb">图片</span>`}</td>
         <td>${comboCell(product, "android", "", editable)}</td>
         <td>${comboCell(product, "storage", "", editable)}</td>
@@ -449,21 +448,7 @@ function slotOptions(selectedSlotId) {
 
 function comboCell(product, field, extraClass, editable) {
   const value = product[field] || "";
-  return `
-    <div class="combo-cell">
-      <input class="table-edit ${extraClass}" data-product-field="${product.id}:${field}" value="${escapeAttr(value)}" ${editable ? "" : "disabled"}>
-      <select class="combo-picker" data-product-field="${product.id}:${field}" ${editable ? "" : "disabled"} aria-label="选择${fieldLabel(field)}">
-        <option value="">选择</option>
-        ${fieldOptionChoices(field, value)}
-      </select>
-    </div>
-  `;
-}
-
-function fieldOptionChoices(field, selectedValue) {
-  return (state.fieldOptions[field] || []).map((value) => {
-    return `<option value="${escapeAttr(value)}" ${value === selectedValue ? "selected" : ""}>${value}</option>`;
-  }).join("");
+  return `<input class="table-edit combo-input ${extraClass}" data-combo-source="${field}" data-product-field="${product.id}:${field}" value="${escapeAttr(value)}" autocomplete="off" ${editable ? "" : "disabled"}>`;
 }
 
 function fieldLabel(field) {
@@ -674,8 +659,6 @@ function renderPermissions() {
 }
 
 function renderSalesPeople() {
-  const options = state.salesPeople.map((name) => `<option value="${name}"></option>`).join("");
-  $("#salesPeopleOptions").innerHTML = options;
   const selectedSales = $("#recordSalesFilter")?.value || "all";
   if ($("#recordSalesFilter")) {
     $("#recordSalesFilter").innerHTML = `<option value="all">全部销售</option>` + state.salesPeople.map((name) => `<option value="${escapeAttr(name)}">${name}</option>`).join("");
@@ -687,11 +670,7 @@ function renderSalesPeople() {
 }
 
 function renderFieldOptions() {
-  const labels = { model: "型号", android: "系统版本", storage: "储存配置" };
-  const datalistMap = { model: "modelOptions", android: "systemOptions", storage: "storageOptions" };
-  Object.entries(datalistMap).forEach(([field, id]) => {
-    $(`#${id}`).innerHTML = (state.fieldOptions[field] || []).map((value) => `<option value="${escapeAttr(value)}"></option>`).join("");
-  });
+  const labels = { android: "系统版本", storage: "储存配置" };
   $("#fieldOptionList").innerHTML = Object.entries(labels).map(([field, label]) => `
     <section class="field-option-group">
       <h4>${label}</h4>
@@ -713,6 +692,44 @@ function addFieldOption(field, value) {
     state.fieldOptions[field].push(trimmed);
     state.fieldOptions[field].sort((a, b) => a.localeCompare(b));
   }
+}
+
+function comboOptions(source) {
+  if (source === "sales") return state.salesPeople;
+  return state.fieldOptions[source] || [];
+}
+
+function showComboDropdown(input) {
+  const source = input.dataset.comboSource;
+  const options = comboOptions(source);
+  const dropdown = $("#comboDropdown");
+  if (!source || !options.length || input.disabled) {
+    hideComboDropdown();
+    return;
+  }
+  dropdown.dataset.targetId = input.id || "";
+  dropdown.dataset.targetField = input.dataset.productField || "";
+  dropdown.innerHTML = options.map((value) => `<button type="button" data-combo-value="${escapeAttr(value)}">${value}</button>`).join("");
+  const rect = input.getBoundingClientRect();
+  dropdown.style.left = `${rect.left + window.scrollX}px`;
+  dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+  dropdown.style.width = `${rect.width}px`;
+  dropdown.classList.add("show");
+}
+
+function hideComboDropdown() {
+  $("#comboDropdown").classList.remove("show");
+}
+
+function applyComboValue(value) {
+  const dropdown = $("#comboDropdown");
+  const target = dropdown.dataset.targetField
+    ? $(`[data-product-field="${dropdown.dataset.targetField}"]`)
+    : $(`#${dropdown.dataset.targetId}`);
+  if (!target) return;
+  target.value = value;
+  target.dispatchEvent(new Event("change", { bubbles: true }));
+  hideComboDropdown();
 }
 
 function addSalesPerson(name) {
@@ -906,6 +923,19 @@ function downloadJson() {
 }
 
 document.addEventListener("click", (event) => {
+  const comboOption = event.target.closest("[data-combo-value]");
+  if (comboOption) {
+    applyComboValue(comboOption.dataset.comboValue);
+    return;
+  }
+
+  const comboInput = event.target.closest(".combo-input");
+  if (comboInput) {
+    showComboDropdown(comboInput);
+  } else if (!event.target.closest("#comboDropdown")) {
+    hideComboDropdown();
+  }
+
   const tab = event.target.closest(".nav-tab");
   if (tab) setActiveView(tab.dataset.view);
 
@@ -1050,11 +1080,18 @@ $("#inventoryTable").addEventListener("blur", (event) => {
   updateProductField(input);
 }, true);
 
+document.addEventListener("focusin", (event) => {
+  const input = event.target.closest(".combo-input");
+  if (input) showComboDropdown(input);
+});
+
+window.addEventListener("resize", hideComboDropdown);
+window.addEventListener("scroll", hideComboDropdown, true);
+
 function updateProductField(input) {
   const [productId, field] = input.dataset.productField.split(":");
   const product = state.products.find((item) => item.id === productId);
   if (!product || !canEditProduct(product)) return;
-  if (input.classList.contains("combo-picker") && !input.value) return;
   if (field === "slotId" && !canEditRack(input.value.split(":")[0])) {
     alert("当前人员没有目标大货架的编辑权限。");
     renderInventory();
@@ -1062,7 +1099,7 @@ function updateProductField(input) {
   }
   const value = field === "stock" ? Math.max(0, Number(input.value || 0)) : input.value.trim();
   product[field] = value;
-  if (["model", "android", "storage"].includes(field)) addFieldOption(field, value);
+  if (["android", "storage"].includes(field)) addFieldOption(field, value);
   render();
 }
 
@@ -1092,7 +1129,6 @@ $("#productForm").addEventListener("submit", (event) => {
   } else {
     state.products.push({ id: uid("p"), ...payload });
   }
-  addFieldOption("model", payload.model);
   addFieldOption("android", payload.android);
   addFieldOption("storage", payload.storage);
   $("#productDialog").close();
