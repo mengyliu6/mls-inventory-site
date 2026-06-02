@@ -9,6 +9,11 @@ const starterData = {
     { id: "u-viewer", name: "仓库查看", role: "viewer", rackIds: [] }
   ],
   salesPeople: ["Wendy", "Hai", "Abby"],
+  fieldOptions: {
+    model: ["JT5-1370", "JT5-1508", "WE-8103", "WE-8106A", "16GXSI"],
+    android: ["Linux", "安卓12", "安卓13", "安卓14"],
+    storage: ["无", "4+64", "6+128", "8+128"]
+  },
   activeUserId: "u-admin",
   rooms: [
     { id: "room-1", name: "房间1", note: "主库存区" },
@@ -79,6 +84,11 @@ function loadState() {
 
 function normalizeState(data) {
   data.salesPeople = data.salesPeople || ["Wendy", "Hai", "Abby"];
+  data.fieldOptions = data.fieldOptions || { model: [], android: [], storage: [] };
+  ["model", "android", "storage"].forEach((field) => {
+    const fromProducts = data.products.map((product) => product[field]).filter(Boolean);
+    data.fieldOptions[field] = [...new Set([...(data.fieldOptions[field] || []), ...fromProducts])].sort();
+  });
   data.users = data.users.map((user) => ({
     ...user,
     rackIds: user.rackIds || user.shelfIds || []
@@ -191,6 +201,7 @@ function render() {
   renderAnalytics();
   renderPermissions();
   renderSalesPeople();
+  renderFieldOptions();
   $("#permissionHint").textContent = permissionText();
   if ($("#rackDialog").open) renderRackDialog();
 }
@@ -227,16 +238,27 @@ function renderFilters() {
   fillRoomSelect($("#roomSelect"), activeRoomId, false);
   fillRoomSelect($("#inventoryRoom"), $("#inventoryRoom").value || "all", true);
   fillRoomSelect($("#analyticsRoom"), $("#analyticsRoom").value || "all", true);
+  fillAnalyticsRackSelect();
   fillSlotSelect($("#inventoryShelf"), $("#inventoryShelf").value || "all", true);
   fillSlotSelect($("#productShelf"), $("#productShelf").value || defaultSlotId(), false);
   fillSystemSelect();
+}
+
+function fillAnalyticsRackSelect() {
+  const select = $("#analyticsRack");
+  if (!select) return;
+  const selected = select.value || "all";
+  const roomId = $("#analyticsRoom").value || "all";
+  const racks = state.shelves.filter((rack) => roomId === "all" || rack.roomId === roomId);
+  select.innerHTML = `<option value="all">全部大货架</option>` + racks.map((rack) => `<option value="${rack.id}">${rack.code}</option>`).join("");
+  select.value = selected === "all" || racks.some((rack) => rack.id === selected) ? selected : "all";
 }
 
 function fillSystemSelect() {
   const select = $("#inventorySystem");
   if (!select) return;
   const selected = select.value || "all";
-  const systems = [...new Set(state.products.map((product) => product.android || "未填"))].sort();
+  const systems = [...new Set([...(state.fieldOptions.android || []), ...state.products.map((product) => product.android || "未填")])].sort();
   select.innerHTML = `<option value="all">全部系统</option>` + systems.map((system) => `<option value="${system}">${system}</option>`).join("");
   select.value = systems.includes(selected) || selected === "all" ? selected : "all";
 }
@@ -399,10 +421,10 @@ function renderInventory() {
       <tr>
         <td>${(inventoryPage - 1) * pageSize + index + 1}</td>
         <td><input class="table-edit" data-product-field="${product.id}:vehicle" value="${escapeAttr(product.vehicle)}" ${editable ? "" : "disabled"}></td>
-        <td><input class="table-edit strong-edit" data-product-field="${product.id}:model" value="${escapeAttr(product.model)}" ${editable ? "" : "disabled"}></td>
+        <td><input class="table-edit strong-edit" list="modelOptions" data-product-field="${product.id}:model" value="${escapeAttr(product.model)}" ${editable ? "" : "disabled"}></td>
         <td>${product.image ? `<img class="product-thumb" src="${product.image}" alt="${product.vehicle}">` : `<span class="placeholder-thumb">图片</span>`}</td>
-        <td><input class="table-edit" data-product-field="${product.id}:android" value="${escapeAttr(product.android || "")}" ${editable ? "" : "disabled"}></td>
-        <td><input class="table-edit" data-product-field="${product.id}:storage" value="${escapeAttr(product.storage || "")}" ${editable ? "" : "disabled"}></td>
+        <td><input class="table-edit" list="systemOptions" data-product-field="${product.id}:android" value="${escapeAttr(product.android || "")}" ${editable ? "" : "disabled"}></td>
+        <td><input class="table-edit" list="storageOptions" data-product-field="${product.id}:storage" value="${escapeAttr(product.storage || "")}" ${editable ? "" : "disabled"}></td>
         <td><select class="table-edit" data-product-field="${product.id}:slotId" ${editable ? "" : "disabled"}>${slotOptions(product.slotId)}</select></td>
         <td><input class="table-edit" data-product-field="${product.id}:note" value="${escapeAttr(product.note || "")}" ${editable ? "" : "disabled"}></td>
         <td>${movementTotal(product.id, "in")}</td>
@@ -460,17 +482,18 @@ function renderRecords() {
 function renderAnalytics() {
   const days = Number($("#analyticsDays").value || 30);
   const roomId = $("#analyticsRoom").value || "all";
+  const rackId = $("#analyticsRack").value || "all";
   const from = new Date();
   from.setDate(from.getDate() - days + 1);
   from.setHours(0, 0, 0, 0);
   const scopedProducts = state.products.filter((product) => {
     const rack = productRack(product);
-    return roomId === "all" || rack?.roomId === roomId;
+    return (roomId === "all" || rack?.roomId === roomId) && (rackId === "all" || rack?.id === rackId);
   });
   const productIds = new Set(scopedProducts.map((product) => product.id));
   const records = state.movements.filter((movement) => productIds.has(movement.productId) && new Date(movement.at) >= from);
   renderSalesBars(records);
-  renderVersionStockBars(scopedProducts);
+  renderOutboundStockBars(scopedProducts, records);
   renderInboundTimeline(records);
   renderTrend(records, days);
 }
@@ -495,21 +518,26 @@ function renderSalesBars(records) {
   `).join("") || `<p class="empty-state">当前筛选条件下暂无出库数据。</p>`;
 }
 
-function renderVersionStockBars(products) {
-  const totals = {};
-  products.forEach((product) => {
-    const key = product.android || "未填";
-    totals[key] = (totals[key] || 0) + product.stock;
-  });
-  const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-  const max = Math.max(1, ...rows.map(([, value]) => value));
-  $("#versionStockBars").innerHTML = rows.map(([name, value]) => `
+function renderOutboundStockBars(products, records) {
+  const outboundProductIds = new Set(records.filter((record) => record.type === "out").map((record) => record.productId));
+  const rows = products
+    .filter((product) => outboundProductIds.has(product.id))
+    .map((product) => {
+      const latestOut = records
+        .filter((record) => record.productId === product.id && record.type === "out")
+        .sort((a, b) => b.at.localeCompare(a.at))[0];
+      return { product, latestOut };
+    })
+    .sort((a, b) => b.latestOut.at.localeCompare(a.latestOut.at))
+    .slice(0, 12);
+  const max = Math.max(1, ...rows.map((row) => row.product.stock));
+  $("#outboundStockBars").innerHTML = rows.map(({ product, latestOut }) => `
     <div class="bar-row">
-      <span>${name}</span>
-      <div class="bar-track"><div class="bar-fill version-fill" style="width: ${(value / max) * 100}%"></div></div>
-      <strong>${value}</strong>
+      <span title="${product.vehicle}">${product.model}</span>
+      <div class="bar-track"><div class="bar-fill version-fill" style="width: ${(product.stock / max) * 100}%"></div></div>
+      <strong title="最近出库 ${latestOut.qty}，${formatDateTime(latestOut.at)}">${product.stock}</strong>
     </div>
-  `).join("") || `<p class="empty-state">暂无库存。</p>`;
+  `).join("") || `<p class="empty-state">当前筛选条件下暂无出库后的库存数据。</p>`;
 }
 
 function renderInboundTimeline(records) {
@@ -585,6 +613,35 @@ function renderSalesPeople() {
   $("#salesPeopleList").innerHTML = state.salesPeople.map((name) => `
     <span class="sales-pill">${name}</span>
   `).join("") || `<p class="empty-state">暂无销售人员。</p>`;
+}
+
+function renderFieldOptions() {
+  const labels = { model: "型号", android: "系统版本", storage: "储存配置" };
+  const datalistMap = { model: "modelOptions", android: "systemOptions", storage: "storageOptions" };
+  Object.entries(datalistMap).forEach(([field, id]) => {
+    $(`#${id}`).innerHTML = (state.fieldOptions[field] || []).map((value) => `<option value="${escapeAttr(value)}"></option>`).join("");
+  });
+  $("#fieldOptionList").innerHTML = Object.entries(labels).map(([field, label]) => `
+    <section class="field-option-group">
+      <h4>${label}</h4>
+      <div>
+        ${(state.fieldOptions[field] || []).map((value) => `
+          <button class="option-pill" type="button" data-option-field="${field}" data-option-value="${escapeAttr(value)}" title="删除 ${escapeAttr(value)}">
+            ${value}<span>×</span>
+          </button>
+        `).join("") || `<p class="empty-state">暂无选项。表格中输入后会自动添加。</p>`}
+      </div>
+    </section>
+  `).join("");
+}
+
+function addFieldOption(field, value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed || !state.fieldOptions[field]) return;
+  if (!state.fieldOptions[field].some((option) => option.toLowerCase() === trimmed.toLowerCase())) {
+    state.fieldOptions[field].push(trimmed);
+    state.fieldOptions[field].sort((a, b) => a.localeCompare(b));
+  }
 }
 
 function addSalesPerson(name) {
@@ -883,9 +940,10 @@ $("#warehouseMap").addEventListener("pointerup", () => {
   render();
 });
 
-["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "inventorySystem", "inventoryStock", "inventoryPageSize", "recordSearch", "analyticsDays", "analyticsRoom"].forEach((id) => {
+["mapProductFilter", "inventorySearch", "inventoryRoom", "inventoryShelf", "inventorySystem", "inventoryStock", "inventoryPageSize", "recordSearch", "analyticsDays", "analyticsRoom", "analyticsRack"].forEach((id) => {
   $(`#${id}`).addEventListener("input", () => {
     if (id === "inventoryRoom") fillSlotSelect($("#inventoryShelf"), "all", true);
+    if (id === "analyticsRoom") fillAnalyticsRackSelect();
     if (id.startsWith("inventory")) inventoryPage = 1;
     render();
   });
@@ -924,6 +982,7 @@ function updateProductField(input) {
   }
   const value = field === "stock" ? Math.max(0, Number(input.value || 0)) : input.value.trim();
   product[field] = value;
+  if (["model", "android", "storage"].includes(field)) addFieldOption(field, value);
   render();
 }
 
@@ -953,6 +1012,9 @@ $("#productForm").addEventListener("submit", (event) => {
   } else {
     state.products.push({ id: uid("p"), ...payload });
   }
+  addFieldOption("model", payload.model);
+  addFieldOption("android", payload.android);
+  addFieldOption("storage", payload.storage);
   $("#productDialog").close();
   render();
 });
@@ -1011,6 +1073,14 @@ $("#salesForm").addEventListener("submit", (event) => {
   event.preventDefault();
   addSalesPerson($("#salesName").value);
   $("#salesName").value = "";
+  render();
+});
+
+$("#fieldOptionList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-option-field]");
+  if (!button) return;
+  const { optionField, optionValue } = button.dataset;
+  state.fieldOptions[optionField] = (state.fieldOptions[optionField] || []).filter((value) => value !== optionValue);
   render();
 });
 

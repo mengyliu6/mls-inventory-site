@@ -207,6 +207,10 @@
               <label for="analyticsRoom">房间</label>
               <select id="analyticsRoom"></select>
             </div>
+            <div class="control-group">
+              <label for="analyticsRack">大货架</label>
+              <select id="analyticsRack"></select>
+            </div>
           </div>
 
           <div class="charts-grid">
@@ -215,8 +219,8 @@
               <div id="salesBars" class="bar-chart"></div>
             </section>
             <section class="chart-panel">
-              <h3>系统版本库存</h3>
-              <div id="versionStockBars" class="bar-chart"></div>
+              <h3>出库后库存</h3>
+              <div id="outboundStockBars" class="bar-chart"></div>
             </section>
             <section class="chart-panel wide">
               <h3>入库批次时间线</h3>
@@ -262,6 +266,11 @@
               <button class="primary-button" type="submit">添加销售</button>
               <div id="salesPeopleList" class="sales-people-list"></div>
             </form>
+
+            <section class="user-list-panel">
+              <h3>表格下拉项</h3>
+              <div id="fieldOptionList" class="field-option-list"></div>
+            </section>
           </div>
         </section>
       </main>
@@ -273,10 +282,10 @@
         <input type="hidden" id="productId" />
         <div class="modal-grid">
           <label>车型<input id="productVehicle" required /></label>
-          <label>型号<input id="productModel" required /></label>
+          <label>型号<input id="productModel" list="modelOptions" required /></label>
           <label>图片地址<input id="productImage" placeholder="可留空" /></label>
-          <label>系统版本<input id="productAndroid" placeholder="Linux / 安卓12" /></label>
-          <label>储存配置<input id="productStorage" placeholder="4+64 / 8+128" /></label>
+          <label>系统版本<input id="productAndroid" list="systemOptions" placeholder="Linux / 安卓12" /></label>
+          <label>储存配置<input id="productStorage" list="storageOptions" placeholder="4+64 / 8+128" /></label>
           <label>货位<select id="productShelf" required></select></label>
           <label>库存<input id="productStock" type="number" min="0" value="0" required /></label>
           <label class="full">备注<textarea id="productNote" rows="3"></textarea></label>
@@ -331,6 +340,9 @@
     </dialog>
 
     <div id="movementToast" class="movement-toast" aria-live="polite" aria-atomic="true"></div>
+    <datalist id="modelOptions"></datalist>
+    <datalist id="systemOptions"></datalist>
+    <datalist id="storageOptions"></datalist>
 
     <script src="./app.js"></script>
   </body>
