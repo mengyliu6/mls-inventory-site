@@ -1,5 +1,10 @@
+import { createWarehouseDataSource } from "./src/composables/useWarehouseData.js";
+
 const STORAGE_KEY = "warehouse-inventory-v2";
 const SLOT_COUNT = 8;
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 const starterData = {
   users: [
@@ -55,6 +60,13 @@ const starterData = {
   ]
 };
 
+const dataSource = createWarehouseDataSource({
+  storageKey: STORAGE_KEY,
+  starterData,
+  normalizeState,
+  onStatus: updateDataSourceStatus
+});
+
 let state = loadState();
 let activeView = "map";
 let activeRoomId = state.rooms[0]?.id;
@@ -67,18 +79,8 @@ let pulseTimer = null;
 let pendingMovement = null;
 let inventoryPage = 1;
 
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return structuredClone(starterData);
-  try {
-    const parsed = JSON.parse(saved);
-    return parsed.rooms && parsed.shelves && parsed.products ? normalizeState(parsed) : structuredClone(starterData);
-  } catch {
-    return structuredClone(starterData);
-  }
+  return dataSource.loadLocal();
 }
 
 function normalizeState(data) {
@@ -105,7 +107,29 @@ function normalizeState(data) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  dataSource.save(state);
+}
+
+function updateDataSourceStatus({ mode, message }) {
+  const node = $("#dataSourceStatus");
+  if (!node) return;
+  node.textContent = message;
+  node.dataset.mode = mode;
+}
+
+async function hydrateRemoteState() {
+  const remoteState = await dataSource.loadRemote();
+  if (!remoteState) return;
+  if (remoteState.__remoteEmpty) {
+    saveState();
+    return;
+  }
+  state = remoteState;
+  activeRoomId = state.rooms.some((room) => room.id === activeRoomId) ? activeRoomId : state.rooms[0]?.id;
+  selectedRackId = state.shelves.some((rack) => rack.id === selectedRackId)
+    ? selectedRackId
+    : state.shelves.find((rack) => rack.roomId === activeRoomId)?.id;
+  render();
 }
 
 function uid(prefix) {
@@ -1301,3 +1325,4 @@ $("#exportJson").addEventListener("click", downloadJson);
 $("#movementTime").value = todayInputValue();
 setActiveView(activeView);
 render();
+hydrateRemoteState();

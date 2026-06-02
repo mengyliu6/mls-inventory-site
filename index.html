@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>公司库存管理</title>
-    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -39,6 +38,7 @@
             <h2 id="viewTitle">仓库图示</h2>
           </div>
           <div class="top-actions">
+            <span id="dataSourceStatus" class="data-source-status" data-mode="local">本地缓存</span>
             <button id="resetDemo" class="ghost-button" type="button">恢复示例</button>
             <button id="exportJson" class="primary-button" type="button">导出数据</button>
           </div>
@@ -374,6 +374,7 @@
 
     <div id="movementToast" class="movement-toast" aria-live="polite" aria-atomic="true"></div>
     <div id="comboDropdown" class="combo-dropdown"></div>
-    <script src="./app.js"></script>
+    <div id="vue-root" hidden></div>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
