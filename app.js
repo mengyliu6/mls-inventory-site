@@ -448,10 +448,14 @@ function slotOptions(selectedSlotId) {
 }
 
 function renderMovementForm() {
+  const selectedProductId = $("#movementProduct").value;
   $("#movementProduct").innerHTML = state.products.map((product) => {
     const slot = productSlot(product);
     return `<option value="${product.id}">${product.model} · ${product.vehicle} · ${slot?.label || "未分配"} · 库存 ${product.stock}</option>`;
   }).join("");
+  if (selectedProductId && state.products.some((product) => product.id === selectedProductId)) {
+    $("#movementProduct").value = selectedProductId;
+  }
   updateMovementPreview();
 }
 
@@ -788,6 +792,7 @@ function openMovementConfirm() {
       <div><dt>数量</dt><dd>${isOut ? "-" : "+"}${pendingMovement.qty}</dd></div>
       <div><dt>日期</dt><dd>${formatDateTime(pendingMovement.at)}</dd></div>
       <div><dt>操作人</dt><dd>${user.name}</dd></div>
+      ${isOut ? `<div><dt>销售人员</dt><dd>${pendingMovement.salesPerson || "待填写"}</dd></div>` : ""}
     </dl>
   `;
   $("#confirmBeforeStock").textContent = pendingMovement.beforeStock;
@@ -815,7 +820,9 @@ function commitMovement({ productId, type, qty, at, note, salesPerson, source, b
   if (source === "form") {
     $("#movementQty").value = 1;
     $("#movementNote").value = "";
+    $("#movementSalesPerson").value = "";
     $("#movementTime").value = todayInputValue();
+    updateMovementPreview();
   }
   render();
 }
@@ -1055,14 +1062,26 @@ $("#productForm").addEventListener("submit", (event) => {
 
 $("#movementForm").addEventListener("submit", (event) => {
   event.preventDefault();
+  const type = $("#movementType").value;
+  const salesPerson = $("#movementSalesPerson").value.trim();
+  if (type === "out" && !salesPerson) {
+    alert("出库需要填写销售人员。");
+    $("#movementSalesPerson").focus();
+    return;
+  }
   addMovement({
     productId: $("#movementProduct").value,
-    type: $("#movementType").value,
+    type,
     qty: Number($("#movementQty").value),
     at: $("#movementTime").value,
     note: $("#movementNote").value.trim(),
-    source: "form"
+    source: "form",
+    salesPerson
   });
+});
+
+["movementType", "movementProduct", "movementQty"].forEach((id) => {
+  $(`#${id}`).addEventListener("input", updateMovementPreview);
 });
 
 $("#movementConfirmForm").addEventListener("submit", (event) => {
