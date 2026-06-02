@@ -60,6 +60,7 @@ let editMap = false;
 let dragState = null;
 let lastSlotPulse = null;
 let pulseTimer = null;
+let pendingMovement = null;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -315,7 +316,6 @@ function renderRackDialog() {
     return `
       <section class="slot-card ${lastSlotPulse?.slotId === slot.id ? `slot-pulse ${lastSlotPulse.type === "in" ? "pulse-in" : "pulse-out"}` : ""}">
         <h4><span>${slot.label}</span><span class="tag">第${slot.level}层${slot.side}</span></h4>
-        ${lastSlotPulse?.slotId === slot.id ? `<div class="slot-pulse-badge">${lastSlotPulse.type === "in" ? "入库" : "出库"} ${lastSlotPulse.type === "in" ? "+" : "-"}${lastSlotPulse.qty}</div>` : ""}
         <div class="slot-products">
           ${list.map((product) => `
             <article class="slot-product ${lastSlotPulse?.productId === product.id ? "product-flash" : ""}">
@@ -400,7 +400,7 @@ function renderRecords() {
         <span class="record-type ${record.type}">${record.type === "in" ? "入库" : "出库"}</span>
         <div class="record-main">
           <strong>${product?.model || "已删除产品"} · ${product?.vehicle || ""}</strong>
-          <span>${slot?.label || "未分配"} · ${user?.name || "未知人员"} · ${formatDateTime(record.at)} · ${record.note || "无备注"}</span>
+          <span>${slot?.label || "未分配"} · ${user?.name || "未知人员"} · ${formatDateTime(record.at)}${record.salesPerson ? ` · 销售：${record.salesPerson}` : ""} · ${record.note || "无备注"}</span>
         </div>
         <strong>${record.qty}</strong>
       </article>
@@ -551,21 +551,80 @@ function openProductDialog(productId) {
   $("#productDialog").showModal();
 }
 
-function addMovement({ productId, type, qty, at, note }) {
+function addMovement({ productId, type, qty, at, note, source = "manual" }) {
   const product = state.products.find((item) => item.id === productId);
   if (!product) return alert("产品不存在。");
   if (!canEditProduct(product)) return alert("当前人员没有这个大货架的编辑权限。");
   if (type === "out" && product.stock < qty) return alert("库存不足，不能出库。");
+  const beforeStock = product.stock;
+  const afterStock = type === "in" ? beforeStock + qty : beforeStock - qty;
+  pendingMovement = { productId, type, qty, at, note, beforeStock, afterStock, source };
+  openMovementConfirm();
+}
+
+function openMovementConfirm() {
+  if (!pendingMovement) return;
+  const product = state.products.find((item) => item.id === pendingMovement.productId);
+  const slot = product ? productSlot(product) : null;
+  const user = activeUser();
+  const isOut = pendingMovement.type === "out";
+  $("#movementConfirmTitle").textContent = isOut ? "确认出库" : "确认入库";
+  $("#movementConfirmSummary").innerHTML = `
+    <dl>
+      <div><dt>产品</dt><dd>${product?.vehicle || ""}</dd></div>
+      <div><dt>型号</dt><dd>${product?.model || ""}</dd></div>
+      <div><dt>货位</dt><dd>${slot?.label || "未分配"}</dd></div>
+      <div><dt>数量</dt><dd>${isOut ? "-" : "+"}${pendingMovement.qty}</dd></div>
+      <div><dt>日期</dt><dd>${formatDateTime(pendingMovement.at)}</dd></div>
+      <div><dt>操作人</dt><dd>${user.name}</dd></div>
+    </dl>
+  `;
+  $("#confirmBeforeStock").textContent = pendingMovement.beforeStock;
+  $("#confirmAfterStock").textContent = pendingMovement.afterStock;
+  $("#confirmNote").value = pendingMovement.note || "";
+  $("#confirmSalesPerson").value = "";
+  $("#salesField").classList.toggle("hidden", !isOut);
+  $("#confirmSalesPerson").required = isOut;
+  $("#movementConfirmDialog").showModal();
+}
+
+function commitMovement({ productId, type, qty, at, note, salesPerson, source }) {
+  const product = state.products.find((item) => item.id === productId);
+  if (!product) return alert("产品不存在。");
   product.stock += type === "in" ? qty : -qty;
-  state.movements.push({ id: uid("m"), productId, type, qty, at, note, userId: state.activeUserId });
+  state.movements.push({ id: uid("m"), productId, type, qty, at, note, salesPerson, userId: state.activeUserId });
   lastSlotPulse = { slotId: product.slotId, productId, type, qty };
+  showMovementToast({ product, type, qty });
   clearTimeout(pulseTimer);
   pulseTimer = setTimeout(() => {
     lastSlotPulse = null;
     renderMap();
     if ($("#rackDialog").open) renderRackDialog();
   }, 1400);
+  if (source === "form") {
+    $("#movementQty").value = 1;
+    $("#movementNote").value = "";
+    $("#movementTime").value = todayInputValue();
+  }
   render();
+}
+
+function showMovementToast({ product, type, qty }) {
+  const toast = $("#movementToast");
+  const slot = productSlot(product);
+  toast.className = `movement-toast ${type === "in" ? "toast-in" : "toast-out"}`;
+  toast.innerHTML = `
+    <div class="toast-mark">${type === "in" ? "入" : "出"}</div>
+    <div class="toast-content">
+      <strong>${type === "in" ? "入库成功" : "出库成功"} <span>${type === "in" ? "+" : "-"}${qty}</span></strong>
+      <p>${product.vehicle}</p>
+      <small>${slot?.label || "未分配货位"} · 当前库存 ${product.stock}</small>
+    </div>
+  `;
+  toast.classList.remove("show");
+  window.requestAnimationFrame(() => toast.classList.add("show"));
+  clearTimeout(showMovementToast.timer);
+  showMovementToast.timer = setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
 function adjustFromSlot(productId, type) {
@@ -576,7 +635,8 @@ function adjustFromSlot(productId, type) {
     type,
     qty,
     at: todayInputValue(),
-    note: "仓库图示直接操作"
+    note: "仓库图示直接操作",
+    source: "slot"
   });
 }
 
@@ -747,11 +807,35 @@ $("#movementForm").addEventListener("submit", (event) => {
     type: $("#movementType").value,
     qty: Number($("#movementQty").value),
     at: $("#movementTime").value,
-    note: $("#movementNote").value.trim()
+    note: $("#movementNote").value.trim(),
+    source: "form"
   });
-  $("#movementQty").value = 1;
-  $("#movementNote").value = "";
-  $("#movementTime").value = todayInputValue();
+});
+
+$("#movementConfirmForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!pendingMovement) return;
+  const salesPerson = $("#confirmSalesPerson").value.trim();
+  if (pendingMovement.type === "out" && !salesPerson) {
+    alert("出库需要填写对应销售。");
+    return;
+  }
+  commitMovement({
+    ...pendingMovement,
+    note: $("#confirmNote").value.trim(),
+    salesPerson
+  });
+  pendingMovement = null;
+  $("#movementConfirmDialog").close();
+});
+
+$("#cancelMovementConfirm").addEventListener("click", () => {
+  pendingMovement = null;
+  $("#movementConfirmDialog").close();
+});
+
+$("#movementConfirmDialog").addEventListener("close", () => {
+  if (!$("#movementConfirmDialog").returnValue) pendingMovement = null;
 });
 
 $("#userForm").addEventListener("submit", (event) => {

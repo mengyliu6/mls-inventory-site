@@ -263,6 +263,36 @@
       </form>
     </dialog>
 
+    <dialog id="movementConfirmDialog" class="modal movement-confirm-modal">
+      <form id="movementConfirmForm">
+        <h3 id="movementConfirmTitle">确认出入库</h3>
+        <div id="movementConfirmSummary" class="movement-confirm-summary"></div>
+        <div class="stock-change-panel">
+          <div>
+            <span>操作前库存</span>
+            <strong id="confirmBeforeStock">0</strong>
+          </div>
+          <div class="stock-arrow">→</div>
+          <div>
+            <span>操作后库存</span>
+            <strong id="confirmAfterStock">0</strong>
+          </div>
+        </div>
+        <label id="salesField" class="confirm-field">销售人员
+          <input id="confirmSalesPerson" placeholder="填写对应销售，例如 Wendy" />
+        </label>
+        <label class="confirm-field">备注
+          <textarea id="confirmNote" rows="3" placeholder="可补充说明"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" id="cancelMovementConfirm">取消</button>
+          <button class="primary-button" type="submit">确认保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="movementToast" class="movement-toast" aria-live="polite" aria-atomic="true"></div>
+
     <script src="./app.js"></script>
   </body>
 </html>
