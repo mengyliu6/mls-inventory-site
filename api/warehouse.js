@@ -1,5 +1,15 @@
 const FEISHU_API = "https://open.feishu.cn/open-apis";
 const REQUIRED_TABLES = ["ROOMS", "RACKS", "PRODUCTS", "MOVEMENTS", "USERS"];
+const TABLE_LABELS = {
+  ROOMS: "rooms",
+  RACKS: "racks",
+  PRODUCTS: "products",
+  MOVEMENTS: "movements",
+  USERS: "users",
+  USER_RACK_PERMISSIONS: "user_rack_permissions",
+  SALES_PEOPLE: "sales_people",
+  FIELD_OPTIONS: "field_options"
+};
 
 let tokenCache = {
   value: "",
@@ -33,14 +43,14 @@ async function readWarehouseState() {
   }
 
   const [rooms, racks, products, movements, users, permissions, salesPeople, fieldOptions] = await Promise.all([
-    listRecords(config, config.tables.ROOMS),
-    listRecords(config, config.tables.RACKS),
-    listRecords(config, config.tables.PRODUCTS),
-    listRecords(config, config.tables.MOVEMENTS),
-    listRecords(config, config.tables.USERS),
-    config.tables.USER_RACK_PERMISSIONS ? listRecords(config, config.tables.USER_RACK_PERMISSIONS) : [],
-    config.tables.SALES_PEOPLE ? listRecords(config, config.tables.SALES_PEOPLE) : [],
-    config.tables.FIELD_OPTIONS ? listRecords(config, config.tables.FIELD_OPTIONS) : []
+    listTableRecords(config, "ROOMS"),
+    listTableRecords(config, "RACKS"),
+    listTableRecords(config, "PRODUCTS"),
+    listTableRecords(config, "MOVEMENTS"),
+    listTableRecords(config, "USERS"),
+    config.tables.USER_RACK_PERMISSIONS ? listTableRecords(config, "USER_RACK_PERMISSIONS") : [],
+    config.tables.SALES_PEOPLE ? listTableRecords(config, "SALES_PEOPLE") : [],
+    config.tables.FIELD_OPTIONS ? listTableRecords(config, "FIELD_OPTIONS") : []
   ]);
 
   const state = composeState({ rooms, racks, products, movements, users, permissions, salesPeople, fieldOptions });
@@ -71,11 +81,11 @@ async function writeWarehouseState(state) {
     };
   }
 
-  await upsertRecords(config, config.tables.ROOMS, state.rooms, roomFields);
-  await upsertRecords(config, config.tables.RACKS, state.shelves || [], rackFields);
-  await upsertRecords(config, config.tables.PRODUCTS, state.products || [], productFields);
-  await upsertRecords(config, config.tables.MOVEMENTS, state.movements || [], movementFields);
-  await upsertRecords(config, config.tables.USERS, state.users || [], userFields);
+  await upsertTableRecords(config, "ROOMS", state.rooms, roomFields);
+  await upsertTableRecords(config, "RACKS", state.shelves || [], rackFields);
+  await upsertTableRecords(config, "PRODUCTS", state.products || [], productFields);
+  await upsertTableRecords(config, "MOVEMENTS", state.movements || [], movementFields);
+  await upsertTableRecords(config, "USERS", state.users || [], userFields);
 
   if (config.tables.USER_RACK_PERMISSIONS) {
     const permissions = (state.users || []).flatMap((user) =>
@@ -86,7 +96,7 @@ async function writeWarehouseState(state) {
         canEdit: true
       }))
     );
-    await upsertRecords(config, config.tables.USER_RACK_PERMISSIONS, permissions, permissionFields);
+    await upsertTableRecords(config, "USER_RACK_PERMISSIONS", permissions, permissionFields);
   }
 
   if (config.tables.SALES_PEOPLE) {
@@ -95,7 +105,7 @@ async function writeWarehouseState(state) {
       name,
       active: true
     }));
-    await upsertRecords(config, config.tables.SALES_PEOPLE, salesPeople, salesPersonFields);
+    await upsertTableRecords(config, "SALES_PEOPLE", salesPeople, salesPersonFields);
   }
 
   if (config.tables.FIELD_OPTIONS) {
@@ -108,7 +118,7 @@ async function writeWarehouseState(state) {
         sortOrder: index + 1
       }))
     );
-    await upsertRecords(config, config.tables.FIELD_OPTIONS, options, fieldOptionFields);
+    await upsertTableRecords(config, "FIELD_OPTIONS", options, fieldOptionFields);
   }
 
   return {
@@ -199,6 +209,32 @@ async function listRecords(config, tableId) {
     pageToken = data.page_token || "";
   } while (pageToken);
   return records;
+}
+
+async function listTableRecords(config, tableKey) {
+  try {
+    return await listRecords(config, config.tables[tableKey]);
+  } catch (error) {
+    throw new Error(formatTableError("读取", tableKey, config.tables[tableKey], error));
+  }
+}
+
+async function upsertTableRecords(config, tableKey, rows, toFields) {
+  try {
+    return await upsertRecords(config, config.tables[tableKey], rows, toFields);
+  } catch (error) {
+    throw new Error(formatTableError("保存", tableKey, config.tables[tableKey], error));
+  }
+}
+
+function formatTableError(action, tableKey, tableId, error) {
+  const label = TABLE_LABELS[tableKey] || tableKey;
+  const envName = `FEISHU_TABLE_${tableKey}`;
+  const detail = error?.message || String(error);
+  const hint = detail.includes("NOTEXIST")
+    ? `请检查 ${envName}=${tableId || "未配置"} 是否属于当前 FEISHU_APP_TOKEN 对应的多维表，并确认飞书应用有权限访问。`
+    : `请检查 ${envName}、FEISHU_APP_TOKEN 和飞书应用权限。`;
+  return `${action} ${label} 表失败：${detail}。${hint}`;
 }
 
 async function upsertRecords(config, tableId, rows, toFields) {
