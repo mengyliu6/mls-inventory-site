@@ -116,6 +116,19 @@ http://localhost:3000/api/warehouse
 
 这里的 `rooms/products` 等数组应有数据。如果 `empty: true`，说明飞书表还没导入数据或 table id 配错。
 
+如果返回 `NOTEXIST`，先访问调试接口：
+
+```text
+http://localhost:3000/api/feishu-debug
+```
+
+这个接口会返回两块关键数据：
+
+- `expected`：当前环境变量里配置的 `FEISHU_TABLE_*`
+- `actualTables`：当前 `FEISHU_APP_TOKEN` 下飞书实际能看到的表
+
+确认 `expected.rooms` 的值能在 `actualTables[].table_id` 中找到。如果找不到，说明 `FEISHU_TABLE_ROOMS` 或 `FEISHU_APP_TOKEN` 填错，或者飞书应用没有权限访问这个多维表。
+
 ## 测试是否真的读取飞书
 
 1. 在飞书 `products` 表里改一个产品的 `stock` 数量。
