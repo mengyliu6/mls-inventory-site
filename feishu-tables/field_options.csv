@@ -1,0 +1,9 @@
+id,field,value,active,sort_order
+opt-system-linux,system_version,Linux,true,1
+opt-system-android-12,system_version,安卓12,true,2
+opt-system-android-13,system_version,安卓13,true,3
+opt-system-android-14,system_version,安卓14,true,4
+opt-storage-none,storage,无,true,1
+opt-storage-4-64,storage,4+64,true,2
+opt-storage-6-128,storage,6+128,true,3
+opt-storage-8-128,storage,8+128,true,4

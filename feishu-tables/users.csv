@@ -1,0 +1,5 @@
+id,name,role,active,created_at,updated_at
+u-admin,管理员,admin,true,2026-06-03 09:00,2026-06-03 09:00
+u-wendy,Wendy,editor,true,2026-06-03 09:00,2026-06-03 09:00
+u-hai,Hai,editor,true,2026-06-03 09:00,2026-06-03 09:00
+u-viewer,仓库查看,viewer,true,2026-06-03 09:00,2026-06-03 09:00

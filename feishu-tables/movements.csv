@@ -1,0 +1,6 @@
+id,product_id,type,qty,at,user_id,user_name,sales_person,stock_before,stock_after,source,note,created_at
+m-1,p-8,in,67,2026-05-14 10:00,u-admin,管理员,,33,100,form,0514 入库,2026-05-14 10:00
+m-2,p-8,out,17,2026-05-27 16:20,u-wendy,Wendy,Abby,100,83,slot,仓库图示直接出库,2026-05-27 16:20
+m-3,p-5,in,5,2026-05-07 09:30,u-hai,Hai,,0,5,form,0507 入库,2026-05-07 09:30
+m-4,p-6,out,2,2026-05-20 14:10,u-hai,Hai,Wendy,3,1,form,样品出库,2026-05-20 14:10
+m-5,p-3,in,11,2026-05-05 11:40,u-admin,管理员,,0,11,form,05 前入库,2026-05-05 11:40

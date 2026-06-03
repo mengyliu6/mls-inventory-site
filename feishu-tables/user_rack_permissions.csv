@@ -1,0 +1,5 @@
+id,user_id,rack_id,can_edit
+urp-wendy-b1,u-wendy,rack-1-b1,true
+urp-wendy-a1,u-wendy,rack-2-a1,true
+urp-hai-b1,u-hai,rack-2-b1,true
+urp-hai-c1,u-hai,rack-3-c1,true
