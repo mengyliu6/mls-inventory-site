@@ -1,35 +1,12 @@
 const REMOTE_ENDPOINT = "/api/warehouse";
 
-export function createWarehouseDataSource({ storageKey, starterData, normalizeState, onStatus }) {
+export function createWarehouseDataSource({ normalizeState, onStatus }) {
   let remoteWritable = false;
   let saveTimer = null;
   let lastRemotePayload = "";
 
-  function clone(value) {
-    return typeof structuredClone === "function"
-      ? structuredClone(value)
-      : JSON.parse(JSON.stringify(value));
-  }
-
   function setStatus(status) {
     onStatus?.(status);
-  }
-
-  function loadLocal() {
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) {
-      setStatus({ mode: "local", message: "本地示例数据" });
-      return clone(starterData);
-    }
-    try {
-      const parsed = JSON.parse(saved);
-      if (!parsed.rooms || !parsed.shelves || !parsed.products) throw new Error("invalid local state");
-      setStatus({ mode: "local", message: "本地缓存" });
-      return normalizeState(parsed);
-    } catch {
-      setStatus({ mode: "local", message: "本地示例数据" });
-      return clone(starterData);
-    }
   }
 
   async function loadRemote() {
@@ -42,16 +19,13 @@ export function createWarehouseDataSource({ storageKey, starterData, normalizeSt
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload.configured) {
         remoteWritable = false;
-        setStatus({
-          mode: "local",
-          message: payload.message || "未配置飞书，使用本地缓存"
-        });
+        setStatus({ mode: "error", message: payload.message || "飞书未配置或接口不可用" });
         return null;
       }
-      if (payload.empty && !payload.state) {
-        remoteWritable = true;
-        setStatus({ mode: "remote", message: payload.message || "飞书表为空，准备同步本地数据" });
-        return { __remoteEmpty: true };
+      if (payload.empty || !payload.state) {
+        remoteWritable = false;
+        setStatus({ mode: "error", message: payload.message || "飞书表为空，请先导入数据" });
+        return null;
       }
       remoteWritable = true;
       lastRemotePayload = JSON.stringify(payload.state);
@@ -64,13 +38,11 @@ export function createWarehouseDataSource({ storageKey, starterData, normalizeSt
     }
   }
 
-  function saveLocal(state) {
-    localStorage.setItem(storageKey, JSON.stringify(state));
-  }
-
   function save(state) {
-    saveLocal(state);
-    if (!remoteWritable) return;
+    if (!remoteWritable) {
+      setStatus({ mode: "error", message: "飞书未连接，无法保存" });
+      return;
+    }
     const nextPayload = JSON.stringify(state);
     if (nextPayload === lastRemotePayload) return;
     clearTimeout(saveTimer);
@@ -98,7 +70,6 @@ export function createWarehouseDataSource({ storageKey, starterData, normalizeSt
   }
 
   return {
-    loadLocal,
     loadRemote,
     save
   };

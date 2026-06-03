@@ -49,7 +49,7 @@ async function readWarehouseState() {
   return {
     configured: true,
     empty,
-    message: empty ? "飞书表暂无数据，已准备同步本地数据" : "飞书数据读取成功",
+    message: empty ? "飞书表暂无数据，请先导入数据" : "飞书数据读取成功",
     state: empty ? null : state
   };
 }

@@ -1,68 +1,22 @@
 import { createWarehouseDataSource } from "./src/composables/useWarehouseData.js";
 
-const STORAGE_KEY = "warehouse-inventory-v2";
 const SLOT_COUNT = 8;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-const starterData = {
-  users: [
-    { id: "u-admin", name: "管理员", role: "admin", rackIds: [] },
-    { id: "u-wendy", name: "Wendy", role: "editor", rackIds: ["rack-1-b1", "rack-2-a1"] },
-    { id: "u-hai", name: "Hai", role: "editor", rackIds: ["rack-2-b1", "rack-3-c1"] },
-    { id: "u-viewer", name: "仓库查看", role: "viewer", rackIds: [] }
-  ],
-  salesPeople: ["Wendy", "Hai", "Abby"],
-  fieldOptions: {
-    android: ["Linux", "安卓12", "安卓13", "安卓14"],
-    storage: ["无", "4+64", "6+128", "8+128"]
-  },
-  activeUserId: "u-admin",
-  rooms: [
-    { id: "room-1", name: "房间1", note: "主库存区" },
-    { id: "room-2", name: "房间2", note: "仪表与主机区" },
-    { id: "room-3", name: "房间3", note: "屏幕与面板区" },
-    { id: "room-4", name: "房间4", note: "备货与临时周转区" }
-  ],
-  shelves: [
-    { id: "rack-1-b1", roomId: "room-1", code: "B1", name: "B1 大货架", x: 8, y: 16, w: 25, h: 27 },
-    { id: "rack-1-b2", roomId: "room-1", code: "B2", name: "B2 大货架", x: 39, y: 16, w: 25, h: 27 },
-    { id: "rack-1-b3", roomId: "room-1", code: "B3", name: "B3 大货架", x: 70, y: 16, w: 22, h: 27 },
-    { id: "rack-2-a1", roomId: "room-2", code: "A1", name: "A1 大货架", x: 8, y: 18, w: 26, h: 28 },
-    { id: "rack-2-a2", roomId: "room-2", code: "A2", name: "A2 大货架", x: 40, y: 18, w: 26, h: 28 },
-    { id: "rack-2-b1", roomId: "room-2", code: "B1", name: "B1 大货架", x: 70, y: 18, w: 22, h: 28 },
-    { id: "rack-3-c1", roomId: "room-3", code: "C1", name: "C1 大货架", x: 10, y: 20, w: 26, h: 30 },
-    { id: "rack-3-c2", roomId: "room-3", code: "C2", name: "C2 大货架", x: 44, y: 20, w: 26, h: 30 },
-    { id: "rack-4-d1", roomId: "room-4", code: "D1", name: "D1 大货架", x: 12, y: 18, w: 28, h: 30 },
-    { id: "rack-4-d2", roomId: "room-4", code: "D2", name: "D2 大货架", x: 52, y: 18, w: 28, h: 30 }
-  ],
-  products: [
-    { id: "p-1", vehicle: "GMC 索罗德仪表 14-18", model: "JT5-1370", image: "", android: "Linux", storage: "无", slotId: "rack-2-a1:2", note: "一台在直播间", stock: 8 },
-    { id: "p-2", vehicle: "凯迪拉克凯雷德 07-14", model: "JT5-1508", image: "", android: "Linux", storage: "无", slotId: "rack-2-a1:4", note: "一台在直播间", stock: 13 },
-    { id: "p-3", vehicle: "福特 F150 仪表 15-21", model: "JT5-1397", image: "", android: "Linux", storage: "无", slotId: "rack-2-a2:6", note: "直播样机", stock: 10 },
-    { id: "p-4", vehicle: "BMW E65/E66", model: "JT5-1303", image: "", android: "Linux", storage: "无", slotId: "rack-2-b1:3", note: "", stock: 3 },
-    { id: "p-5", vehicle: "4Runner 2010-2022", model: "WE-8103", image: "", android: "安卓12", storage: "6+128", slotId: "rack-1-b1:8", note: "亮黑", stock: 5 },
-    { id: "p-6", vehicle: "Tacoma 2016-2022", model: "WE-8106A", image: "", android: "安卓12", storage: "4+64", slotId: "rack-1-b1:7", note: "枪色+电镀银", stock: 1 },
-    { id: "p-7", vehicle: "Grand Cherokee 2014-2022", model: "WE-8504", image: "", android: "安卓14", storage: "8+128", slotId: "rack-1-b2:8", note: "", stock: 30 },
-    { id: "p-8", vehicle: "14-20 GX", model: "16GXSI", image: "", android: "Linux", storage: "", slotId: "rack-1-b1:1", note: "", stock: 100 },
-    { id: "p-9", vehicle: "玛莎拉蒂 GT 2007-2020", model: "10.4 1024*768", image: "", android: "安卓13", storage: "6+128", slotId: "rack-3-c1:2", note: "黑色", stock: 2 },
-    { id: "p-10", vehicle: "保时捷卡宴 PCM3.0/3.1", model: "12.3 1920*720", image: "", android: "安卓12", storage: "8+128", slotId: "rack-3-c2:6", note: "", stock: 6 },
-    { id: "p-11", vehicle: "GX460 10-16", model: "10.25 1920*720", image: "", android: "安卓12", storage: "4+64", slotId: "rack-3-c1:2", note: "", stock: 1 }
-  ],
-  movements: [
-    { id: "m-1", productId: "p-8", type: "in", qty: 67, at: "2026-05-14T10:00", userId: "u-admin", note: "0514 入库" },
-    { id: "m-2", productId: "p-8", type: "out", qty: 17, at: "2026-05-27T16:20", userId: "u-wendy", note: "订单出库" },
-    { id: "m-3", productId: "p-5", type: "in", qty: 5, at: "2026-05-07T09:30", userId: "u-hai", note: "0507 入库" },
-    { id: "m-4", productId: "p-6", type: "out", qty: 2, at: "2026-05-20T14:10", userId: "u-hai", note: "样品出库" },
-    { id: "m-5", productId: "p-3", type: "in", qty: 11, at: "2026-05-05T11:40", userId: "u-admin", note: "05 前入库" },
-    { id: "m-6", productId: "p-10", type: "out", qty: 3, at: "2026-05-28T17:20", userId: "u-wendy", note: "客户订单" }
-  ]
+const emptyState = {
+  users: [],
+  salesPeople: [],
+  fieldOptions: { android: [], storage: [] },
+  activeUserId: "",
+  rooms: [],
+  shelves: [],
+  products: [],
+  movements: []
 };
 
 const dataSource = createWarehouseDataSource({
-  storageKey: STORAGE_KEY,
-  starterData,
   normalizeState,
   onStatus: updateDataSourceStatus
 });
@@ -80,7 +34,7 @@ let pendingMovement = null;
 let inventoryPage = 1;
 
 function loadState() {
-  return dataSource.loadLocal();
+  return structuredClone(emptyState);
 }
 
 function normalizeState(data) {
@@ -120,10 +74,6 @@ function updateDataSourceStatus({ mode, message }) {
 async function hydrateRemoteState() {
   const remoteState = await dataSource.loadRemote();
   if (!remoteState) return;
-  if (remoteState.__remoteEmpty) {
-    saveState();
-    return;
-  }
   state = remoteState;
   activeRoomId = state.rooms.some((room) => room.id === activeRoomId) ? activeRoomId : state.rooms[0]?.id;
   selectedRackId = state.shelves.some((rack) => rack.id === selectedRackId)
@@ -145,7 +95,7 @@ function escapeAttr(value) {
 }
 
 function activeUser() {
-  return state.users.find((user) => user.id === state.activeUserId) || state.users[0];
+  return state.users.find((user) => user.id === state.activeUserId) || state.users[0] || { id: "", name: "未连接", role: "viewer", rackIds: [] };
 }
 
 function rackSlots(rack) {
@@ -311,6 +261,11 @@ function defaultSlotId() {
 function renderMap() {
   const map = $("#warehouseMap");
   const room = state.rooms.find((item) => item.id === activeRoomId) || state.rooms[0];
+  if (!room) {
+    map.innerHTML = `<div class="map-room-title">正在读取飞书<br><small>请确认 /api/warehouse 返回数据</small></div>`;
+    renderInspector();
+    return;
+  }
   const query = $("#mapProductFilter").value.trim().toLowerCase();
   const racks = state.shelves.filter((rack) => rack.roomId === room.id);
   map.innerHTML = `<div class="map-room-title">${room.name}<br><small>${room.note || ""}</small></div>`;
@@ -1313,11 +1268,7 @@ $("#userPermissionList").addEventListener("change", (event) => {
 });
 
 $("#resetDemo").addEventListener("click", () => {
-  if (!confirm("确认恢复示例数据？当前浏览器里的修改会被覆盖。")) return;
-  state = structuredClone(starterData);
-  activeRoomId = state.rooms[0].id;
-  selectedRackId = state.shelves.find((rack) => rack.roomId === activeRoomId)?.id;
-  render();
+  hydrateRemoteState();
 });
 
 $("#exportJson").addEventListener("click", downloadJson);
